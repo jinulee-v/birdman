@@ -16,7 +16,7 @@ class DCInsideStreamer(BaseStreamer):
     DCInsideStreamer helps to stream specific gallery from past to future.
     """
 
-    def __init__(self, markup='lxml', is_async=True):
+    def __init__(self, markup='html.parser', is_async=True):
         self.is_async = is_async
 
         parser = self.get_parser()
@@ -129,7 +129,7 @@ class DCInsideStreamer(BaseStreamer):
             response = self.request_post(gallery_id, post_no)
 
             try:
-                post = self.parse_post(response.text, 'lxml', self._strainer)
+                post = self.parse_post(response.text, 'html.parser', self._strainer)
             except AttributeError:
                 return None
 
@@ -243,7 +243,7 @@ class DCInsideStreamer(BaseStreamer):
     @staticmethod
     def parse_comments(text):
         comments = []
-        soup = BeautifulSoup(text, 'lxml')
+        soup = BeautifulSoup(text, 'html.parser')
         comment_elements = soup.find_all('tr', class_='reply_line')
 
         for element in comment_elements:
