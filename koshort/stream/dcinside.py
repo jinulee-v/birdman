@@ -127,7 +127,7 @@ class DCInsideStreamer(BaseStreamer):
             # Site's anti-bot policy may block crawling & you can consider gentle crawling
             time.sleep(self.options.interval)
             response = self.request_post(gallery_id, post_no)
-
+            
             try:
                 post = self.parse_post(response.text, 'html.parser', self._strainer)
             except AttributeError:
