@@ -83,13 +83,12 @@ class DCInsideStreamer(BaseStreamer):
         self._view_url = 'http://gall.dcinside.com/board/view'
         self._comment_view_url = 'http://gall.dcinside.com/board/view'
         self._current_post_id = self.options.init_post_id
+        
+        self._strainer = SoupStrainer(
+            'div',
+            class_=['view_content_wrap', 'view_comment']
+        )
 
-        self._strainer = SoupStrainer('div', attrs={'class': [
-            're_gall_top_1',    # 제목, 글쓴이, 작성시각
-            'btn_recommend',    # 추천, 비추천
-            'gallery_re_title',  # 댓글
-            's_write',          # 본문
-        ]})
         # Custom header is required in order to request.
         self.header = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:59.0) Gecko/20100101 Firefox/59.0'}
@@ -140,8 +139,8 @@ class DCInsideStreamer(BaseStreamer):
             post['post_no'] = post_no
             post['crawled_at'] = datetime.now().isoformat()
 
-            if self.options.include_comments and post.get('comment_cnt'):
-                post['comments'] = self.get_all_comments(gallery_id, post_no, post['comment_cnt'])
+            # if self.options.include_comments and post.get('comment_cnt'):
+            #     post['comments'] = self.get_all_comments(gallery_id, post_no, post['comment_cnt'])
             return post
 
         except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectTimeout):
@@ -178,7 +177,9 @@ class DCInsideStreamer(BaseStreamer):
                 if self.options.verbose:
                     print(Fore.CYAN + result['title'] + Fore.RESET)
                     print(Fore.CYAN + Style.DIM + result['written_at'] + Style.RESET_ALL + Fore.RESET)
+                    print(Fore.MAGENTA + Style.DIM + result['nickname'] + Style.RESET_ALL + Fore.RESET)
                     print(result['body'])
+                    print()
                 writer.write("@title:" + result['title'])
                 writer.write("@written_at:" + result['written_at'])
                 writer.write("@body:" + result['body'])
@@ -200,29 +201,28 @@ class DCInsideStreamer(BaseStreamer):
 
         if not str(soup):
             soup = BeautifulSoup(markup, parser)
-
             if '/error/deleted/' in str(soup):
                 return None
             elif '해당 갤러리는 존재하지 않습니다' in str(soup):
                 raise NoSuchGalleryError
             else:
                 pass
+            
+        timestamp = soup.find('span', attrs={'class': 'gall_date'}).getText()
 
-        temp_info = soup.find(attrs={'class': 'w_top_right'})
-        timestamp = temp_info.find('b').getText()
+        user_info = soup.find('div', attrs={'class': 'gall_writer'})
+        user_id = user_info['data-uid']
+        user_ip = user_info['data-ip']
+        nickname = user_info['data-nick']
 
-        user_info = soup.find(attrs={'class': 'user_layer'})
-        user_id = user_info['user_id']
-        user_ip = '' if user_id else temp_info.find(attrs={'class': 'li_ip'}).string
-        nickname = user_info['user_name']
+        title = soup.find('span', attrs={'class': 'title_subject'}).getText()
+        view_cnt = int(soup.find('span', attrs={'class': 'gall_count'}).getText().replace(u'조회 ', ''))
+        view_up = int(soup.find('p', attrs={'class', 'up_num'}).getText())
+        view_dn = int(soup.find('p', attrs={'class', 'down_num'}).getText())
+        comment_cnt = int(soup.find('span', attrs={'class': 'gall_comment'}).getText().replace(u'댓글 ', ''))
+        body = soup.find('div', attrs={'class': 'write_div'}).getText()
 
-        title = soup.find('dl', attrs={'class': 'wt_subject'}).find('dd').getText()
-        view_cnt = int(soup.find('dd', attrs={'class': 'dd_num'}).string)
-        view_up = int(soup.find(id='recommend_view_up').string)
-        view_dn = int(soup.find(id='recommend_view_down').string)
-        comment_cnt = int(soup.find(id='re_count').string)
-        body = soup.find('div', attrs={'class': 's_write'}).find('td').getText()
-
+        
         post = {
             'user_id': user_id,
             'user_ip': user_ip,
