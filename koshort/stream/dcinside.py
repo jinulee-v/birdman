@@ -1,8 +1,7 @@
 from datetime import datetime
 import re
-from bs4 import BeautifulSoup, SoupStrainer
+from bs4 import BeautifulSoup
 from koshort.stream import BaseStreamer
-from koshort.data import StringWriter
 
 import requests
 import time
@@ -74,11 +73,6 @@ class DCInsideStreamer(BaseStreamer):
         self._view_url = 'http://gall.dcinside.com'
         self._comment_view_url = 'http://gall.dcinside.com/board/view'
         self._current_post_id = self.options.init_post_id
-
-        # self._strainer = SoupStrainer(
-        #     'div',
-        #     class_=['view_content_wrap', 'view_comment', 'gall_listwrap']
-        # )
 
         # Custom header is required in order to request.
         self.header = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -182,7 +176,6 @@ class DCInsideStreamer(BaseStreamer):
 
     def job(self):
         colorama.init()
-        # writer = StringWriter(self.options.filename)
 
         def summary(result):
             if not self.options.metadata_to_dict:
@@ -193,26 +186,24 @@ class DCInsideStreamer(BaseStreamer):
                     print(Fore.MAGENTA + Style.DIM + '조회 %d / 추천 %d / 비추천 %d / 댓글 %d' % (result['view_cnt'], result['view_up'], result['view_dn'], result['comment_cnt']) + Style.RESET_ALL + Fore.RESET)
                     print(result['body'])
                     print()
-                # writer.write("@title:" + result['title'])
-                # writer.write("@written_at:" + result['written_at'])
-                # writer.write("@body:" + result['body'])
+                # TODO
+                # Database update code
             else:
                 if self.options.verbose:
                     pprint(result)
-                # writer.write(result)
+
 
         for result in self.get_post(self.options.gallery_id):
             if result is not None:
                 summary(result)
 
     @staticmethod
-    def parse_post_list(markup, parser, strainer=None):
+    def parse_post_list(markup, parser):
         """BeatifulSoup based post list parser
 
         Args:
             markup (str): response.text
             parser (str): parser option for bs4.
-            strainer (SoupStrainer): strainer for fast parsing
 
         Returns:
             post_list (list): List object containing URL(after domain only) of posts within the page 
@@ -239,13 +230,12 @@ class DCInsideStreamer(BaseStreamer):
         return post_list
 
     @staticmethod
-    def parse_post(markup, parser, strainer=None):
+    def parse_post(markup, parser):
         """BeatifulSoup based post parser
 
         Args:
             markup (str): response.text
             parser (str): parser option for bs4.
-            strainer (SoupStrainer): strainer for fast parsing
 
         Returns:
             post (dict): Dict object containing relevant information about the post
