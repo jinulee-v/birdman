@@ -40,13 +40,17 @@ class BaseStreamer(object):
     def __init__(self, config_obj):
         self.config = BaseStreamerConfig(config_obj)
 
-    def show_options(self):
-        """Print out options available and predefined values."""
+    def show_config(self):
+        """Print out config available and predefined values."""
 
-        for attr, value in sorted(vars(self.options).items()):
+        for attr, value in sorted(vars(self.config).items()):
             print("{} = {}".format(attr, value))
+        print()
 
     def stream(self):
+        if self.config.verbose:
+            self.show_config()
+
         try:
             if self.config.is_async:
                 self._thread = PropagatingThread(target=self.job)
