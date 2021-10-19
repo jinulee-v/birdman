@@ -148,8 +148,11 @@ class DCInsideStreamer(BaseStreamer):
                 post['post_no'] = post_no
                 post['crawled_at'] = datetime.now().isoformat()
 
-                # if self.options.include_comments and 'comment_cnt' in post:
-                #     post['comments'] = self.get_all_comments(gallery_id, post_no, post['comment_cnt'])
+                if self.options.include_comments and 'comment_cnt' in post:
+                    if post['comment_cnt'] > 0:
+                        post['comments'] = self.get_all_comments(gallery_id, post_no, post['comment_cnt'])
+                    else:
+                        post['comments'] = []
                 yield post
         except NoSuchGalleryError:
             return
@@ -157,22 +160,27 @@ class DCInsideStreamer(BaseStreamer):
             return
 
     def get_all_comments(self, gallery_id, post_no, comment_cnt):
-        comment_page_cnt = (comment_cnt - 1) // self.options.comments_per_page + 1
-        comments = []
-        headers = {**self.headers(), **{'X-Requested-With': 'XMLHttpRequest'}}
-        data = {'ci_t': self._session.cookies['ci_c'], 'id': gallery_id, 'no': post_no}
+        """
+        FIXME: get_all_comments() currently not available
+        """
+        return []
+        # comment_page_cnt = (comment_cnt - 1) // self.options.comments_per_page + 1
+        # comments = []
+        # headers = {**self.header, **{'X-Requested-With': 'XMLHttpRequest'}}
+        # data = {'ci_t': self._session.cookies['ci_c'], 'id': gallery_id, 'no': post_no}
 
-        for i in range(comment_page_cnt):
-            data['comment_page'] = i + 1
-            response = self._session.post(self._comment_view_url, headers=headers, data=data)
-            batch = self.parse_comments(response.text)
+        # for i in range(comment_page_cnt):
+        #     data['comment_page'] = i + 1
+        #     response = self._session.post(self._comment_view_url, headers=headers, data=data)
+            
+        #     batch = self.parse_comments(response.text)
 
-            if not batch:
-                break
+        #     if not batch:
+        #         break
 
-            comments = batch + comments
+        #     comments = batch + comments
 
-        return comments
+        # return comments
 
     def job(self):
         colorama.init()
@@ -209,16 +217,12 @@ class DCInsideStreamer(BaseStreamer):
             post_list (list): List object containing URL(after domain only) of posts within the page 
         """
         
-        with open('test.log', 'w') as file:
-            file.write(markup)
         try:
             soup = BeautifulSoup(markup, parser).find('div', attrs={'class': 'gall_listwrap'})
             if '해당 갤러리는 존재하지 않습니다' in str(soup):
                 raise NoSuchGalleryError
         except:
             return None
-        with open('test2.log', 'w') as file:
-            file.write(str(soup))
 
         raw_post_list = soup.find_all('tr', attrs={'class': 'us-post'})
 
@@ -240,17 +244,12 @@ class DCInsideStreamer(BaseStreamer):
         Returns:
             post (dict): Dict object containing relevant information about the post
         """
-
         try:
             soup = BeautifulSoup(markup, parser).find('div', attrs={'class': 'view_content_wrap'})
             if '해당 갤러리는 존재하지 않습니다' in str(soup):
                 raise NoSuchGalleryError
         except:
             return None
-        # with open('test.log', 'w') as file:
-        #     file.write(markup)
-        # with open('test2.log', 'w') as file:
-        #     file.write(str(soup))
 
         timestamp = soup.find('span', attrs={'class': 'gall_date'}).getText()
 
@@ -287,29 +286,33 @@ class DCInsideStreamer(BaseStreamer):
 
     @staticmethod
     def parse_comments(text):
-        comments = []
-        soup = BeautifulSoup(text, 'html5lib')
-        comment_elements = soup.find_all('tr', class_='reply_line')
+        """
+        FIXME: parse_comments() currently not available
+        """
+        return []
+        # comments = []
+        # soup = BeautifulSoup(text, 'html5lib')
+        # comment_elements = soup.find_all('tr', class_='reply_line')
 
-        for element in comment_elements:
-            user_layer = element.find('td', class_='user_layer')
-            nickname = user_layer['user_name']
-            user_id = user_layer['user_id']
-            body = element.find('td', class_='reply')
-            user_ip = '' if user_id else body.find('span').extract().text
-            timestamp = element.find('td', class_='retime').text
+        # for element in comment_elements:
+        #     user_layer = element.find('td', class_='user_layer')
+        #     nickname = user_layer['user_name']
+        #     user_id = user_layer['user_id']
+        #     body = element.find('td', class_='reply')
+        #     user_ip = '' if user_id else body.find('span').extract().text
+        #     timestamp = element.find('td', class_='retime').text
 
-            comment = {
-                'user_id': user_id,
-                'user_ip': user_ip,
-                'nickname': nickname,
-                'written_at': timestamp,
-                'body': body.text.strip()
-            }
+        #     comment = {
+        #         'user_id': user_id,
+        #         'user_ip': user_ip,
+        #         'nickname': nickname,
+        #         'written_at': timestamp,
+        #         'body': body.text.strip()
+        #     }
 
-            comments.append(comment)
+        #     comments.append(comment)
 
-        return comments
+        # return comments
 
 class NoSuchGalleryError(Exception):
     pass
