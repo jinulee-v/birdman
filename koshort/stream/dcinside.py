@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 from bs4 import BeautifulSoup, SoupStrainer
 from koshort.stream import BaseStreamer
 from koshort.data import StringWriter
@@ -16,7 +17,7 @@ class DCInsideStreamer(BaseStreamer):
     DCInsideStreamer helps to stream specific gallery from past to future.
     """
 
-    def __init__(self, markup='html.parser', is_async=True):
+    def __init__(self, markup='html5lib', is_async=True):
         self.is_async = is_async
 
         parser = self.get_parser()
@@ -44,17 +45,6 @@ class DCInsideStreamer(BaseStreamer):
             type=int
         )
         parser.add_argument(
-            '--final_post_id',
-            help='final post_id to stop crawling',
-            default=10000,
-            type=int
-        )
-        parser.add_argument(
-            '--forever',
-            help='try crawling for forever',
-            action='store_true'
-        )
-        parser.add_argument(
             '--timeout',
             help='crawling timeout per request',
             default=5,
@@ -80,85 +70,107 @@ class DCInsideStreamer(BaseStreamer):
         self.options, _ = parser.parse_known_args()
         self._session = requests.Session()
         self._markup = markup
-        self._view_url = 'http://gall.dcinside.com/board/view'
+        self._lists_url = 'http://gall.dcinside.com/board/lists' 
+        self._view_url = 'http://gall.dcinside.com'
         self._comment_view_url = 'http://gall.dcinside.com/board/view'
         self._current_post_id = self.options.init_post_id
-        
-        self._strainer = SoupStrainer(
-            'div',
-            class_=['view_content_wrap', 'view_comment']
-        )
+
+        # self._strainer = SoupStrainer(
+        #     'div',
+        #     class_=['view_content_wrap', 'view_comment', 'gall_listwrap']
+        # )
 
         # Custom header is required in order to request.
         self.header = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:59.0) Gecko/20100101 Firefox/59.0'}
 
-    def request_post(self, gallery_id, post_no):
-        """Request dcinside post
+    def get_post_list(self, gallery_id):
+        """DCinside Post generator
 
         Args:
-            gallery_id (str): predefined id of gallery
-            post_no (int): integer of post number
+            gallery_id (str): Gallery ID
 
-        Returns:
-            response: response of requests
+        Yields:
+            url (str): URL for the next post found
         """
-
-        response = self._session.get('%s/?id=%s&no=%d' % (self._view_url, gallery_id, post_no),
-                                     headers=self.header, timeout=self.options.timeout)
-        return response
-
-    def request_comment(self, headers=None, data=None):
-        """Request dcinside comment
-
-        Args:
-            headers (dict): request headers
-            data (dict): data to be used
-
-        Returns:
-            response: response of requests
-        """
-        response = self._session.post(self._comment_view_url, headers=headers, data=data)
-        return response
-
-    def get_post(self, gallery_id, post_no):
-        try:
-            # Site's anti-bot policy may block crawling & you can consider gentle crawling
-            time.sleep(self.options.interval)
-            response = self.request_post(gallery_id, post_no)
-            
+        page = 1
+        while True:
             try:
-                post = self.parse_post(response.text, 'html.parser', self._strainer)
-            except AttributeError:
-                return None
+                url = '%s?id=%s&page=%d' % (self._lists_url, gallery_id, page)
+                response = self._session.get(
+                    url,
+                    headers=self.header,
+                    timeout=self.options.timeout
+                )
+                post_list = self.parse_post_list(response.text, 'html5lib')
+                for url in post_list:
+                    yield self._view_url + re.sub('&page=[0-9]*', '', url)
+                page += 1
+            except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectTimeout):
+                # if timeout occurs, retry
+                continue
 
-            if not isinstance(post, dict):
-                return None
+    def get_post(self, gallery_id):
+        """DCinside Post generator
 
-            post['gallery_id'] = gallery_id
-            post['post_no'] = post_no
-            post['crawled_at'] = datetime.now().isoformat()
+        Args:
+            gallery_id (str): Gallery ID
 
-            # if self.options.include_comments and post.get('comment_cnt'):
-            #     post['comments'] = self.get_all_comments(gallery_id, post_no, post['comment_cnt'])
-            return post
+        Yields:
+            post (dict): Dict object containing relevant information about the post
+        """
 
-        except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectTimeout):
-            # if timeout occurs, retry
-            return self.get_post(gallery_id, post_no)
+        try:
+            for url in self.get_post_list(gallery_id):
+                # Check if we have saw this post before
+                post_no = int(re.search('no=([0-9]*)', url).group(1))
+                if post_no <= self._current_post_id:
+                    return
 
+                while True:
+                    try:
+                        # Site's anti-bot policy may block crawling & you can consider gentle crawling
+                        time.sleep(self.options.interval)
+
+                        response = self._session.get(
+                            url,
+                            headers=self.header,
+                            timeout=self.options.timeout
+                        )
+
+                        post = self.parse_post(response.text, 'html5lib')
+                        break
+                    except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectTimeout):
+                        # if timeout occurs, retry
+                        continue
+                    except AttributeError:
+                        return None
+
+                if not isinstance(post, dict):
+                    return None
+
+                post['url'] = url
+                post['gallery_id'] = gallery_id
+                post['post_no'] = post_no
+                post['crawled_at'] = datetime.now().isoformat()
+
+                # if self.options.include_comments and 'comment_cnt' in post:
+                #     post['comments'] = self.get_all_comments(gallery_id, post_no, post['comment_cnt'])
+                yield post
         except NoSuchGalleryError:
-            return self.get_post(gallery_id, post_no)
+            return
+        except AttributeError:
+            return
 
     def get_all_comments(self, gallery_id, post_no, comment_cnt):
         comment_page_cnt = (comment_cnt - 1) // self.options.comments_per_page + 1
         comments = []
-        headers = {'X-Requested-With': 'XMLHttpRequest'}
+        headers = {**self.headers(), **{'X-Requested-With': 'XMLHttpRequest'}}
         data = {'ci_t': self._session.cookies['ci_c'], 'id': gallery_id, 'no': post_no}
 
         for i in range(comment_page_cnt):
             data['comment_page'] = i + 1
-            response = self.request_comment(headers, data)
+            response = self._session.post(self._comment_view_url, headers=headers, data=data)
             batch = self.parse_comments(response.text)
 
             if not batch:
@@ -170,44 +182,86 @@ class DCInsideStreamer(BaseStreamer):
 
     def job(self):
         colorama.init()
-        writer = StringWriter(self.options.filename)
+        # writer = StringWriter(self.options.filename)
 
         def summary(result):
             if not self.options.metadata_to_dict:
                 if self.options.verbose:
                     print(Fore.CYAN + result['title'] + Fore.RESET)
                     print(Fore.CYAN + Style.DIM + result['written_at'] + Style.RESET_ALL + Fore.RESET)
-                    print(Fore.MAGENTA + Style.DIM + result['nickname'] + Style.RESET_ALL + Fore.RESET)
+                    print(Fore.RED + Style.DIM + result['nickname'] + Style.RESET_ALL + Fore.RESET)
+                    print(Fore.MAGENTA + Style.DIM + '조회 %d / 추천 %d / 비추천 %d / 댓글 %d' % (result['view_cnt'], result['view_up'], result['view_dn'], result['comment_cnt']) + Style.RESET_ALL + Fore.RESET)
                     print(result['body'])
                     print()
-                writer.write("@title:" + result['title'])
-                writer.write("@written_at:" + result['written_at'])
-                writer.write("@body:" + result['body'])
+                # writer.write("@title:" + result['title'])
+                # writer.write("@written_at:" + result['written_at'])
+                # writer.write("@body:" + result['body'])
             else:
                 if self.options.verbose:
                     pprint(result)
-                writer.write(result)
+                # writer.write(result)
 
-        while (self.options.final_post_id > self._current_post_id) | self.options.forever:
-            result = self.get_post(self.options.gallery_id, self._current_post_id)
+        for result in self.get_post(self.options.gallery_id):
             if result is not None:
                 summary(result)
 
-            self._current_post_id += 1
+    @staticmethod
+    def parse_post_list(markup, parser, strainer=None):
+        """BeatifulSoup based post list parser
+
+        Args:
+            markup (str): response.text
+            parser (str): parser option for bs4.
+            strainer (SoupStrainer): strainer for fast parsing
+
+        Returns:
+            post_list (list): List object containing URL(after domain only) of posts within the page 
+        """
+        
+        with open('test.log', 'w') as file:
+            file.write(markup)
+        try:
+            soup = BeautifulSoup(markup, parser).find('div', attrs={'class': 'gall_listwrap'})
+            if '해당 갤러리는 존재하지 않습니다' in str(soup):
+                raise NoSuchGalleryError
+        except:
+            return None
+        with open('test2.log', 'w') as file:
+            file.write(str(soup))
+
+        raw_post_list = soup.find_all('tr', attrs={'class': 'us-post'})
+
+        # remove NOTICE posts(fixed at the top of the list)
+        post_list = [
+            tr.find('a')['href'] for tr in raw_post_list
+            if tr['data-type'] == "icon_txt"
+        ]
+        return post_list
 
     @staticmethod
-    def parse_post(markup, parser, strainer):
-        soup = BeautifulSoup(markup, parser, parse_only=strainer)
+    def parse_post(markup, parser, strainer=None):
+        """BeatifulSoup based post parser
 
-        if not str(soup):
-            soup = BeautifulSoup(markup, parser)
-            if '/error/deleted/' in str(soup):
-                return None
-            elif '해당 갤러리는 존재하지 않습니다' in str(soup):
+        Args:
+            markup (str): response.text
+            parser (str): parser option for bs4.
+            strainer (SoupStrainer): strainer for fast parsing
+
+        Returns:
+            post (dict): Dict object containing relevant information about the post
+        """
+
+        try:
+            soup = BeautifulSoup(markup, parser).find('div', attrs={'class': 'view_content_wrap'})
+            if '해당 갤러리는 존재하지 않습니다' in str(soup):
                 raise NoSuchGalleryError
-            else:
-                pass
-            
+        except:
+            return None
+        # with open('test.log', 'w') as file:
+        #     file.write(markup)
+        # with open('test2.log', 'w') as file:
+        #     file.write(str(soup))
+
         timestamp = soup.find('span', attrs={'class': 'gall_date'}).getText()
 
         user_info = soup.find('div', attrs={'class': 'gall_writer'})
@@ -215,14 +269,15 @@ class DCInsideStreamer(BaseStreamer):
         user_ip = user_info['data-ip']
         nickname = user_info['data-nick']
 
-        title = soup.find('span', attrs={'class': 'title_subject'}).getText()
         view_cnt = int(soup.find('span', attrs={'class': 'gall_count'}).getText().replace(u'조회 ', ''))
         view_up = int(soup.find('p', attrs={'class', 'up_num'}).getText())
         view_dn = int(soup.find('p', attrs={'class', 'down_num'}).getText())
         comment_cnt = int(soup.find('span', attrs={'class': 'gall_comment'}).getText().replace(u'댓글 ', ''))
-        body = soup.find('div', attrs={'class': 'write_div'}).getText()
 
-        
+        title = soup.find('span', attrs={'class': 'title_subject'}).getText()
+
+        body = soup.find('div', attrs={'class': 'write_div'}).getText().strip()
+
         post = {
             'user_id': user_id,
             'user_ip': user_ip,
@@ -243,7 +298,7 @@ class DCInsideStreamer(BaseStreamer):
     @staticmethod
     def parse_comments(text):
         comments = []
-        soup = BeautifulSoup(text, 'html.parser')
+        soup = BeautifulSoup(text, 'html5lib')
         comment_elements = soup.find_all('tr', class_='reply_line')
 
         for element in comment_elements:
@@ -265,7 +320,6 @@ class DCInsideStreamer(BaseStreamer):
             comments.append(comment)
 
         return comments
-
 
 class NoSuchGalleryError(Exception):
     pass
