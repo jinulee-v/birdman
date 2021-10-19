@@ -3,12 +3,8 @@ from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import division
 
-from argparse import ArgumentParser
 from koshort.threading import PropagatingThread
 import urllib3
-
-
-__all__ = ['KoshortStreamerError', 'BaseStreamer']
 
 
 class KoshortStreamerError(Exception):
@@ -20,6 +16,18 @@ class KoshortStreamerError(Exception):
         return "%s has crashed. \n%s" % (self.streamer, self.message)
 
 
+class BaseStreamerConfig(object):
+    """Config object for BaseStreamer.
+    """
+    
+    def __init__(self, obj):
+        """
+        Args:
+            obj (dict): result of YAML parsing.
+        """
+        self.verbose = False
+        self.is_async = True
+
 class BaseStreamer(object):
     """BaseStreamer class contains:
 
@@ -29,23 +37,8 @@ class BaseStreamer(object):
         stream: try asynchronous streaming using job method
     """
 
-    def __init__(self, is_async=True):
-        self.is_async = is_async
-
-    def get_parser(self):
-        """customized argument parser to set various parameters
-
-        Returns:
-            object: argument parser.
-        """
-
-        parser = ArgumentParser()
-        parser.add_argument(
-            '-v', '--verbose',
-            help="increase verbosity",
-            action="store_true"
-        )
-        return parser
+    def __init__(self, config_obj):
+        self.config = BaseStreamerConfig(config_obj)
 
     def show_options(self):
         """Print out options available and predefined values."""
@@ -55,7 +48,7 @@ class BaseStreamer(object):
 
     def stream(self):
         try:
-            if self.is_async:
+            if self.config.is_async:
                 self._thread = PropagatingThread(target=self.job)
                 self._thread.start()
                 self._thread.join()
@@ -63,7 +56,7 @@ class BaseStreamer(object):
                 self.job()
         except urllib3.exceptions.ProtocolError:
             print("ProtocolError has raised but continue to stream.")
-            self.stream(is_async=self.is_async)
+            self.stream()
         except RecursionError:
             return False
         except KeyboardInterrupt:
