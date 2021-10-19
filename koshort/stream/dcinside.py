@@ -33,14 +33,15 @@ class DCInsideStreamerConfig(ActiveStreamerConfig):
         self.comments_per_page = obj.get('comments_per_page', 40)
 
         # When do we stop
-        self.init_post_id = obj.get('init_post_id', 0)
-        self.set_current_post_id(self.init_post_id)
-        self.init_date = obj.get('init_date', None)
-    
-    def set_current_post_id(self, new_post_id):
+        init_post_id = obj.get('current_post_id', 0)
+        init_datetime = obj.get('current_datetime', "0000-00-00T00:00:00")
+        self.set_current(init_post_id, init_datetime)
+
+    def set_current(self, new_post_id, new_datetime):
         """Update current_post_id after finish crawling
         """
         self.current_post_id = new_post_id
+        self.current_datetime = new_datetime
 
 
 class DCInsideStreamer(BaseStreamer):
@@ -96,11 +97,6 @@ class DCInsideStreamer(BaseStreamer):
 
         try:
             for url in self.get_post_list(gallery_id):
-                # Check if we have saw this post before
-                post_no = int(re.search('no=([0-9]*)', url).group(1))
-                if post_no <= self.config.current_post_id:
-                    return
-
                 while True:
                     try:
                         # Site's anti-bot policy may block crawling & you can consider gentle crawling
@@ -125,6 +121,7 @@ class DCInsideStreamer(BaseStreamer):
 
                 post['url'] = url
                 post['gallery_id'] = gallery_id
+                post_no = int(re.search('no=([0-9]*)', url).group(1))
                 post['post_no'] = post_no
                 post['crawled_at'] = datetime.now().isoformat()
 
@@ -133,6 +130,12 @@ class DCInsideStreamer(BaseStreamer):
                         post['comments'] = self.get_all_comments(gallery_id, post_no, post['comment_cnt'])
                     else:
                         post['comments'] = []
+
+                # Check if we have saw this post before
+                if post_no <= self.config.current_post_id or post['written_at'] <= self.config.current_datetime:
+                    # FIXME: Directly comparing datetime ISO-formatted string
+                    return
+
                 yield post
         except NoSuchGalleryError:
             return
@@ -167,6 +170,7 @@ class DCInsideStreamer(BaseStreamer):
 
         def summary(result):
             if self.config.verbose:
+                print(result['url'])
                 print(Fore.CYAN + result['title'] + Fore.RESET)
                 print(Fore.CYAN + Style.DIM + result['written_at'] + Style.RESET_ALL + Fore.RESET)
                 print(Fore.RED + Style.DIM + result['nickname'] + Style.RESET_ALL + Fore.RESET)
@@ -176,9 +180,29 @@ class DCInsideStreamer(BaseStreamer):
             # TODO
             # Database update code
 
+        if self.config.verbose:
+            print()
+            print("Start of crawling epoch")
+            print(datetime.now().isoformat())
+            print()
+
+        new_post_id, new_datetime = self.config.current_post_id, self.config.current_datetime
+        initial_result = True
         for result in self.get_post(self.config.gallery_id):
+            if initial_result:
+                new_post_id, new_datetime = result['post_no'], result['written_at']
+                initial_result = False
             if result is not None:
                 summary(result)
+
+        if self.config.verbose:
+            print()
+            print("End of crawling epoch(reached config.current_post_id)")
+            print(datetime.now().isoformat())
+            print()
+        self.config.set_current(new_post_id, new_datetime)
+        time.sleep(self.config.recrawl_interval)
+        self.job()
 
     @staticmethod
     def parse_post_list(markup, parser):
@@ -227,6 +251,7 @@ class DCInsideStreamer(BaseStreamer):
             return None
 
         timestamp = soup.find('span', attrs={'class': 'gall_date'}).getText()
+        timestamp = datetime.strptime(timestamp, "%Y.%m.%d %H:%M:%S").isoformat()
 
         user_info = soup.find('div', attrs={'class': 'gall_writer'})
         user_id = user_info['data-uid']
@@ -289,6 +314,7 @@ class DCInsideStreamer(BaseStreamer):
 
         # return comments
 
+
 class NoSuchGalleryError(Exception):
     pass
 
@@ -296,6 +322,8 @@ class NoSuchGalleryError(Exception):
 def main():
     app = DCInsideStreamer({})
     app.config.verbose = True
+    app.config.current_post_id = 1565715
+    app.config.recrawl_interval = 60
     app.stream()
 
 
