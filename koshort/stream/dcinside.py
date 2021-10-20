@@ -32,6 +32,7 @@ class DCInsideStreamerConfig(ActiveStreamerConfig):
 
         # DCInside Gallery ID (str)
         self.gallery_id = obj.get('gallery_id', 'cat')
+        self.name = 'dcinside.' + self.gallery_id
 
         # Should we include comments? (str)
         self.include_comments = bool(obj.get('include_comments', 0))
@@ -57,16 +58,11 @@ class DCInsideStreamer(BaseStreamer):
     def __init__(self, config_obj):
 
         self.config = DCInsideStreamerConfig(config_obj)
-        self.name = 'dcinside.' + self.config.gallery_id
 
         self._session = requests.Session()
-        self.logger = logging.getLogger('asyncio.koshort.stream.dcinside.' + self.config.gallery_id)
-        self.process_logger()
-        if self.config.verbose:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.WARNING)
-        
+
+        self.set_logger()
+
         self._lists_url = 'http://gall.dcinside.com/board/lists'
         self._view_url = 'http://gall.dcinside.com'
         self._comment_view_url = 'http://gall.dcinside.com/board/view'
@@ -190,8 +186,8 @@ class DCInsideStreamer(BaseStreamer):
                 Fore.MAGENTA + '조회 %d / 추천 %d / 비추천 %d / 댓글 %d' % (result['view_cnt'], result['view_up'], result['view_dn'], result['comment_cnt']) + Fore.RESET + '\n\n' + # Statistics
                 result['body'] # Body
             )
-        
-        self.logger.info("Start of crawling epoch"
+
+        self.logger.info("Start of crawling epoch")
 
         new_post_id, new_datetime = self.config.current_post_id, self.config.current_datetime
         initial_result = True
@@ -329,12 +325,14 @@ async def main():
         'verbose': 1,
         'gallery_id': 'cat',
         'current_datetime': "2021-10-20",
+        'page_interval': 5,
         'recrawl_interval': 60
     })
     app2 = DCInsideStreamer({
         'verbose': 1,
         'gallery_id': 'dog',
         'current_datetime': "2021-10-20",
+        'page_interval': 10,
         'recrawl_interval': 60
     })
     app = stream.merge(app1.stream(), app2.stream())

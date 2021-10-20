@@ -43,17 +43,24 @@ class BaseStreamer(object):
     def show_config(self):
         """Print out config available and predefined values."""
 
-        string = 'Configuration for <%s>\n' % (self.name)
+        string = 'Configuration for <%s>\n' % (self.config.name)
         for attr, value in sorted(vars(self.config).items()):
             string += "    {} = {}\n".format(attr, value)
         string += "\n"
         self.logger.info(string)
-    
-    def process_logger(self, stream=None, filename=None):
+
+    def set_logger(self, stream=None, filename=None):
+        # logger
+        self.logger = logging.getLogger('asyncio.koshort.stream.' + self.config.name)
+        if self.config.verbose:
+            self.logger.setLevel(logging.DEBUG)
+        else:
+            self.logger.setLevel(logging.WARNING)
+
         # Formatter
-        formatter = logging.Formatter('[%(levelname)s] ' + self.name 
+        formatter = logging.Formatter('[%(levelname)s] ' + self.config.name 
 + ' %(asctime)s | %(message)s\n')
-        
+
         # Handler
         handler = logging.StreamHandler(stream)
         handler.setFormatter(formatter)
