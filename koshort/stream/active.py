@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from koshort.stream.base import BaseStreamer, BaseStreamerConfig
 
+from abc import ABCMeta, abstractmethod
+
 
 class ActiveStreamerConfig(BaseStreamerConfig):
     """Config object for Active Streamer.
@@ -41,6 +43,8 @@ class ActiveStreamer(BaseStreamer):
         stream: try asynchronous streaming using job method
     """
 
+    __metaclass__ = ABCMeta
+
     async def job(self):
         self.logger.info("Start of crawling epoch")
 
@@ -59,3 +63,21 @@ class ActiveStreamer(BaseStreamer):
         self.config.set_current(new_post_id, new_datetime)
         await asyncio.sleep(self.config.recrawl_interval)
         self.job()
+
+    @abstractmethod
+    async def get_post(self):
+        '''Must override as a generator(i.e. yield not return).
+        Generate one result at a time(usually a single post).
+        
+        Use `aiohttp` instead of `requests` to make asynchronous requests.
+        Use self.config.page_interval to delay crawling.
+        '''
+        pass
+
+    @abstractmethod
+    async def summary(self, result):
+        '''Override as a void function(i.e. no return value).
+        
+        Use self.logger to generate logs with the result(what get_post() yields).
+        '''
+        pass

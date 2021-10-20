@@ -6,6 +6,8 @@ from __future__ import division
 import urllib3
 import logging
 
+from abc import ABCMeta, abstractmethod
+
 
 class KoshortStreamerError(Exception):
     def __init__(self, message, streamer):
@@ -37,6 +39,8 @@ class BaseStreamer(object):
         set_logger: set logger configurations
         stream: try asynchronous streaming using job method
     """
+
+    __metaclass__ = ABCMeta
 
     def __init__(self, config_obj):
         self.config = BaseStreamerConfig(config_obj)
@@ -88,3 +92,10 @@ class BaseStreamer(object):
         except KeyboardInterrupt:
             self.logger.error("User has interrupted.")
             return
+
+    @abstractmethod
+    async def job():
+        '''Must override as a generator(i.e. yield not return).
+        Generate one result at a time.
+        '''
+        pass
