@@ -1,20 +1,20 @@
 # AsyncIO
 import asyncio
 from aiostream import stream
+import aiohttp
 
-# Network
-import requests
+# Parsing
 from bs4 import BeautifulSoup
-from koshort.stream.base import BaseStreamer
-from koshort.stream.active import ActiveStreamerConfig
 
 # Formatting
-import logging
 import re
-import time
 from datetime import datetime
 import colorama
 from colorama import Style, Fore
+
+from koshort.stream.base import BaseStreamer
+from koshort.stream.active import ActiveStreamerConfig
+
 
 class DCInsideStreamerConfig(ActiveStreamerConfig):
     """Config object for DCInsideStreamer.
@@ -59,7 +59,7 @@ class DCInsideStreamer(BaseStreamer):
 
         self.config = DCInsideStreamerConfig(config_obj)
 
-        self._session = requests.Session()
+        self._session = aiohttp.ClientSession()
 
         self.set_logger()
 
@@ -81,16 +81,16 @@ class DCInsideStreamer(BaseStreamer):
             try:
                 url = '%s?id=%s&page=%d' % (self._lists_url, gallery_id, page)
                 await asyncio.sleep(self.config.page_interval)
-                response = self._session.get(
+                async with self._session.get(
                     url,
                     headers=self.config.header,
                     timeout=self.config.timeout
-                )
-                post_list = self.parse_post_list(response.text, self.config.markup)
-                for url in post_list:
-                    yield self._view_url + re.sub('&page=[0-9]*', '', url)
+                ) as response:
+                    post_list = self.parse_post_list(await response.text(), self.config.markup)
+                    for url in post_list:
+                        yield self._view_url + re.sub('&page=[0-9]*', '', url)
                 page += 1
-            except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectTimeout):
+            except aiohttp.ServerTimeoutError:
                 # if timeout occurs, retry
                 continue
 
@@ -111,15 +111,15 @@ class DCInsideStreamer(BaseStreamer):
                         # Site's anti-bot policy may block crawling & you can consider gentle crawling
                         await asyncio.sleep(self.config.page_interval)
 
-                        response = self._session.get(
+                        async with self._session.get(
                             url,
                             headers=self.config.header,
                             timeout=self.config.timeout
-                        )
+                        ) as response:
 
-                        post = self.parse_post(response.text, self.config.markup)
-                        break
-                    except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectTimeout):
+                            post = self.parse_post(await response.text(), self.config.markup)
+                            break
+                    except aiohttp.ServerTimeoutError:
                         # if timeout occurs, retry
                         continue
                     except AttributeError:
