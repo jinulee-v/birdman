@@ -193,7 +193,7 @@ class DCInsideStreamer(ActiveStreamer):
 
                         'written_at': datetime.strptime(comment['date_time'], "%Y.%m.%d %H:%M").isoformat(),
 
-                        'body': comment['comment_memo'],
+                        'body': re.sub('(<br>)+', '\n', comment['comment_memo']),
 
                         'subcomments': []
                 }
@@ -265,7 +265,7 @@ class DCInsideStreamer(ActiveStreamer):
 
         title = soup.find('span', attrs={'class': 'title_subject'}).getText()
 
-        body = soup.find('div', attrs={'class': 'write_div'}).getText().strip()
+        body = soup.find('div', attrs={'class': 'write_div'}).get_text('\n', strip=True)
 
         post = {
             'user_id': user_id,
