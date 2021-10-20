@@ -26,7 +26,6 @@ class BaseStreamerConfig(object):
             obj (dict): result of YAML parsing.
         """
         self.verbose = False
-        self.is_async = True
 
 class BaseStreamer(object):
     """BaseStreamer class contains:
@@ -47,22 +46,18 @@ class BaseStreamer(object):
             print("{} = {}".format(attr, value))
         print()
 
-    def stream(self):
+    async def stream(self):
         if self.config.verbose:
             self.show_config()
 
         try:
-            if self.config.is_async:
-                self._thread = PropagatingThread(target=self.job)
-                self._thread.start()
-                self._thread.join()
-            else:
-                self.job()
+            async for result in self.job():
+                yield result
         except urllib3.exceptions.ProtocolError:
             print("ProtocolError has raised but continue to stream.")
             self.stream()
         except RecursionError:
-            return False
+            return
         except KeyboardInterrupt:
             print("User has interrupted.")
-            return False
+            return

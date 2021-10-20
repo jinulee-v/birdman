@@ -1,5 +1,6 @@
 from datetime import datetime
 import re
+import asyncio
 from bs4 import BeautifulSoup
 from koshort.stream.base import BaseStreamer
 from koshort.stream.active import ActiveStreamerConfig
@@ -59,7 +60,7 @@ class DCInsideStreamer(BaseStreamer):
         self._view_url = 'http://gall.dcinside.com'
         self._comment_view_url = 'http://gall.dcinside.com/board/view'
 
-    def get_post_list(self, gallery_id):
+    async def get_post_list(self, gallery_id):
         """DCinside Post generator
 
         Args:
@@ -72,6 +73,7 @@ class DCInsideStreamer(BaseStreamer):
         while True:
             try:
                 url = '%s?id=%s&page=%d' % (self._lists_url, gallery_id, page)
+                await asyncio.sleep(self.config.page_interval)
                 response = self._session.get(
                     url,
                     headers=self.config.header,
@@ -85,7 +87,7 @@ class DCInsideStreamer(BaseStreamer):
                 # if timeout occurs, retry
                 continue
 
-    def get_post(self, gallery_id):
+    async def get_post(self, gallery_id):
         """DCinside Post generator
 
         Args:
@@ -96,11 +98,11 @@ class DCInsideStreamer(BaseStreamer):
         """
 
         try:
-            for url in self.get_post_list(gallery_id):
+            async for url in self.get_post_list(gallery_id):
                 while True:
                     try:
                         # Site's anti-bot policy may block crawling & you can consider gentle crawling
-                        time.sleep(self.config.page_interval)
+                        await asyncio.sleep(self.config.page_interval)
 
                         response = self._session.get(
                             url,
@@ -114,10 +116,10 @@ class DCInsideStreamer(BaseStreamer):
                         # if timeout occurs, retry
                         continue
                     except AttributeError:
-                        return None
+                        return
 
                 if not isinstance(post, dict):
-                    return None
+                    return
 
                 post['url'] = url
                 post['gallery_id'] = gallery_id
@@ -165,7 +167,7 @@ class DCInsideStreamer(BaseStreamer):
 
         # return comments
 
-    def job(self):
+    async def job(self):
         colorama.init()
 
         def summary(result):
@@ -177,8 +179,6 @@ class DCInsideStreamer(BaseStreamer):
                 print(Fore.MAGENTA + Style.DIM + '조회 %d / 추천 %d / 비추천 %d / 댓글 %d' % (result['view_cnt'], result['view_up'], result['view_dn'], result['comment_cnt']) + Style.RESET_ALL + Fore.RESET)
                 print(result['body'])
                 print()
-            # TODO
-            # Database update code
 
         if self.config.verbose:
             print()
@@ -188,12 +188,13 @@ class DCInsideStreamer(BaseStreamer):
 
         new_post_id, new_datetime = self.config.current_post_id, self.config.current_datetime
         initial_result = True
-        for result in self.get_post(self.config.gallery_id):
+        async for result in self.get_post(self.config.gallery_id):
             if initial_result:
                 new_post_id, new_datetime = result['post_no'], result['written_at']
                 initial_result = False
             if result is not None:
                 summary(result)
+            yield result
 
         if self.config.verbose:
             print()
@@ -201,7 +202,7 @@ class DCInsideStreamer(BaseStreamer):
             print(datetime.now().isoformat())
             print()
         self.config.set_current(new_post_id, new_datetime)
-        time.sleep(self.config.recrawl_interval)
+        await asyncio.sleep(self.config.recrawl_interval)
         self.job()
 
     @staticmethod
@@ -319,13 +320,14 @@ class NoSuchGalleryError(Exception):
     pass
 
 
-def main():
+async def main():
     app = DCInsideStreamer({})
     app.config.verbose = True
     app.config.current_post_id = 1565715
     app.config.recrawl_interval = 60
-    app.stream()
+    async for _ in app.stream():
+        pass
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
