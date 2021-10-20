@@ -13,9 +13,7 @@ from datetime import datetime
 import colorama
 from colorama import Style, Fore
 
-from koshort.stream.base import BaseStreamer
-from koshort.stream.active import ActiveStreamerConfig
-
+from koshort.stream.active import ActiveStreamer, ActiveStreamerConfig
 
 class DCInsideStreamerConfig(ActiveStreamerConfig):
     """Config object for DCInsideStreamer.
@@ -50,7 +48,7 @@ class DCInsideStreamerConfig(ActiveStreamerConfig):
         self.current_datetime = new_datetime
 
 
-class DCInsideStreamer(BaseStreamer):
+class DCInsideStreamer(ActiveStreamer):
     """DCInside is a biggest community website in Korea.
     DCInsideStreamer helps to stream specific gallery from future to past.
     
@@ -64,41 +62,35 @@ class DCInsideStreamer(BaseStreamer):
         self._session = aiohttp.ClientSession()
 
         self.set_logger()
+        # Use colorama
+        colorama.init()
 
         # FIXME someday we should all turn over from raw HTML parsing to API
         self._lists_url = 'http://gall.dcinside.com/board/lists'
         self._view_url = 'http://gall.dcinside.com'
         self._comment_api_url = 'http://app.dcinside.com/api/comment_new.php'
 
-    async def get_post_list(self, gallery_id):
-        """DCinside Post generator
-
-        Args:
-            gallery_id (str): Gallery ID
-
-        Yields:
-            url (str): URL for the next post found
+    def summary(self, result):
+        """summary function for DCInside.
         """
-        page = 1
-        while True:
-            try:
-                url = '%s?id=%s&page=%d' % (self._lists_url, gallery_id, page)
-                await asyncio.sleep(self.config.page_interval)
-                async with self._session.get(
-                    url,
-                    headers=self.config.header,
-                    timeout=self.config.timeout
-                ) as response:
-                    post_list = self.parse_post_list(await response.text(), self.config.markup)
-                    for url in post_list:
-                        yield self._view_url + re.sub('&page=[0-9]*', '', url)
-                page += 1
-            except aiohttp.ServerTimeoutError:
-                # if timeout occurs, retry
-                continue
+        text = ''
+        text += result['url'] + '\n' # URL
+        text += Fore.CYAN + result['title'] + Fore.RESET + '\n' # Title
+        text += Fore.CYAN + result['written_at'] + Fore.RESET + '\n' # Written at
+        text += Fore.RED + result['nickname'] + Fore.RESET + '\n' # Written by
+        text += Fore.MAGENTA + '조회 %d / 추천 %d / 비추천 %d / 댓글 %d' % (result['view_cnt'], result['view_up'], result['view_dn'], result['comment_cnt']) + Fore.RESET + '\n\n' # Statistics
+        text += result['body'] + '\n\n' # Body
+        if self.config.include_comments:
+            for comment in result['comments']:
+                text += Fore.RED + comment['nickname'] + Fore.RESET + ' (' + comment['written_at'] + ') | ' + comment['body'] + '\n'
+                for subcomment in comment['subcomments']:
+                    text += '└ ' + Fore.RED + subcomment['nickname'] + Fore.RESET + ' (' + subcomment['written_at'] + ') | ' + subcomment['body'] + '\n'
+
+        self.logger.debug(text)
 
     async def get_post(self):
-        """DCinside Post generator
+        """Post generator for DCInside.
+        get_post is ALWAYS the main custom entry point of the ActiveCrawler.
 
         Args:
             gallery_id (str): Gallery ID
@@ -155,6 +147,33 @@ class DCInsideStreamer(BaseStreamer):
         except AttributeError:
             return
 
+    async def get_post_list(self, gallery_id):
+        """DCinside Post generator
+
+        Args:
+            gallery_id (str): Gallery ID
+
+        Yields:
+            url (str): URL for the next post found
+        """
+        page = 1
+        while True:
+            try:
+                url = '%s?id=%s&page=%d' % (self._lists_url, gallery_id, page)
+                await asyncio.sleep(self.config.page_interval)
+                async with self._session.get(
+                    url,
+                    headers=self.config.header,
+                    timeout=self.config.timeout
+                ) as response:
+                    post_list = self.parse_post_list(await response.text(), self.config.markup)
+                    for url in post_list:
+                        yield self._view_url + re.sub('&page=[0-9]*', '', url)
+                page += 1
+            except aiohttp.ServerTimeoutError:
+                # if timeout occurs, retry
+                continue
+        
     async def get_all_comments(self, gallery_id, post_no):
         """Get all comments by DCInside mobile app API.
         """
@@ -183,43 +202,6 @@ class DCInsideStreamer(BaseStreamer):
                 else:
                     comments[-1]['subcomments'].append(comment_data)
             return comments
-
-    async def job(self):
-        colorama.init()
-
-        def summary(result):
-            text = ''
-            text += result['url'] + '\n' # URL
-            text += Fore.CYAN + result['title'] + Fore.RESET + '\n' # Title
-            text += Fore.CYAN + result['written_at'] + Fore.RESET + '\n' # Written at
-            text += Fore.RED + result['nickname'] + Fore.RESET + '\n' # Written by
-            text += Fore.MAGENTA + '조회 %d / 추천 %d / 비추천 %d / 댓글 %d' % (result['view_cnt'], result['view_up'], result['view_dn'], result['comment_cnt']) + Fore.RESET + '\n\n' # Statistics
-            text += result['body'] + '\n\n' # Body
-            if self.config.include_comments:
-                for comment in result['comments']:
-                    text += Fore.RED + comment['nickname'] + Fore.RESET + ' (' + comment['written_at'] + ') | ' + comment['body'] + '\n'
-                    for subcomment in comment['subcomments']:
-                        text += '└ ' + Fore.RED + subcomment['nickname'] + Fore.RESET + ' (' + subcomment['written_at'] + ') | ' + subcomment['body'] + '\n'
-
-            self.logger.debug(text)
-
-        self.logger.info("Start of crawling epoch")
-
-        new_post_id, new_datetime = self.config.current_post_id, self.config.current_datetime
-        initial_result = True
-        async for result in self.get_post():
-            if initial_result:
-                new_post_id, new_datetime = result['post_no'], result['written_at']
-                initial_result = False
-            if result is not None:
-                summary(result)
-            yield result
-
-        if self.config.verbose:
-            self.logger.info("End of crawling epoch(reached config.current_post_id)")
-        self.config.set_current(new_post_id, new_datetime)
-        await asyncio.sleep(self.config.recrawl_interval)
-        self.job()
 
     @staticmethod
     def parse_post_list(markup, parser):

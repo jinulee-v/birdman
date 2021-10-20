@@ -34,6 +34,7 @@ class BaseStreamer(object):
     Methods:
         get_parser: returns initial argument parser
         show_options: show options that can be used or parsed
+        set_logger: set logger configurations
         stream: try asynchronous streaming using job method
     """
 
