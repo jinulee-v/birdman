@@ -4,5 +4,4 @@ from __future__ import absolute_import
 
 from birdman.stream.base import KoshortStreamerError
 
-from birdman.stream.twitter import TwitterStreamer
 from birdman.stream.dcinside import DCInsideStreamer

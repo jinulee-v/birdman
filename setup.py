@@ -9,7 +9,7 @@ from setuptools import find_packages, setup
 def get_version():
     about = {}
     root = os.path.abspath(os.path.dirname(__file__))
-    with io.open(os.path.join(root, 'koshort', 'about.py'), encoding='utf-8') as f:
+    with io.open(os.path.join(root, 'birdman', 'about.py'), encoding='utf-8') as f:
         exec(f.read(), about)
 
     return about
@@ -20,11 +20,11 @@ def requirements():
         with open(os.path.join(os.path.dirname(__file__), reqfile)) as f:
             return f.read().splitlines()
 
-    if sys.version_info >= (3, ):
+    if sys.version_info >= (3, 7):
         return _openreq('requirements.txt')
     else:
         raise Exception(
-            "Koshort does not support python2.* distribution. consider using python3 which supports richer text formatting capability and code productivity.")
+            "Birdman does not support python2 and python<=3.6 distribution. consider using python>=3.7.")
 
 
 def setup_package():
