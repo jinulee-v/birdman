@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from koshort.stream.base import BaseStreamer, BaseStreamerConfig
+from birdman.stream.base import BaseStreamer, BaseStreamerConfig
 
 from abc import ABCMeta, abstractmethod
 

@@ -13,6 +13,5 @@ You can use following tricks when you use them.
 """
 from __future__ import absolute_import
 
-from koshort.about import *
-from koshort.data import clear, listdir
-from koshort import stream  # Subpackage pre-loading
+from birdman.about import *
+from birdman import stream  # Subpackage pre-loading

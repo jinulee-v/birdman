@@ -13,16 +13,16 @@ build_package:
 	python setup.py sdist --formats=gztar,zip
 
 build_docs:
-	del docs\koshort*.rst
-	sphinx-apidoc -F -o docs koshort/ --separate
+	del docs\birdman*.rst
+	sphinx-apidoc -F -o docs birdman/ --separate
 	docs\make.bat html
 
 check:
 	pyroma .
-	pycodestyle koshort --ignore E501
+	pycodestyle birdman --ignore E501
 
 fix:
-	autopep8 koshort --recursive --in-place --pep8-passes 2000 --verbose --ignore E501
+	autopep8 birdman --recursive --in-place --pep8-passes 2000 --verbose --ignore E501
 
 testpypi:
 	twine upload --repository-url https://test.pypi.org/legacy/ dist/*.tar.gz
@@ -31,7 +31,7 @@ pypi:
 	twine upload --repository-url https://upload.pypi.org/legacy/ dist/*.tar.gz
 
 test:
-	python -m pytest --cov=koshort tests/
+	python -m pytest --cov=birdman tests/
 
 extract_i18n:
 	cd docs\

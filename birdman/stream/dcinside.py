@@ -13,7 +13,7 @@ from datetime import datetime
 import colorama
 from colorama import Style, Fore
 
-from koshort.stream.active import ActiveStreamer, ActiveStreamerConfig
+from birdman.stream.active import ActiveStreamer, ActiveStreamerConfig
 
 class DCInsideStreamerConfig(ActiveStreamerConfig):
     """Config object for DCInsideStreamer.

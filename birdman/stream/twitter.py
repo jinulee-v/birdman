@@ -8,14 +8,13 @@ import tweepy
 import tweepy.asynchronous
 import colorama  # Colorama streaming verbosity.
 
-from koshort.constants import DATA_DIR, ALPHABET
-from koshort.stream import BaseStreamer
-from koshort.utils import delete_links, delete_mentions
+from birdman.stream.base import BaseStreamer
+from birdman.utils import delete_links, delete_mentions
 
 
-class KoshortTwitterStream(tweepy.Stream):
+class BirdmanTwitterStream(tweepy.Stream):
     def __init__(self, options, dirname, word_list):
-        """KoshortTwitterStream is a tweepy listener to listen on filtered list of words.
+        """BirdmanTwitterStream is a tweepy listener to listen on filtered list of words.
 
         Args:
             options (object): argparser argument namespace
@@ -30,7 +29,7 @@ class KoshortTwitterStream(tweepy.Stream):
         self.access_token = options.access_token
         self.access_token_secret = options.access_token_secret
         
-        super(KoshortTwitterStream, self).__init__(
+        super(BirdmanTwitterStream, self).__init__(
             self.consumer_key, self.consumer_secret,
             self.access_token, self.access_token_secret
         )
@@ -97,10 +96,10 @@ class KoshortTwitterStream(tweepy.Stream):
             return False
 
         
-class KoshortTwitterAsyncStream(tweepy.asynchronous.AsyncStream):
+class BirdmanTwitterAsyncStream(tweepy.asynchronous.AsyncStream):
     def __init__(self, options, dirname, word_list):
-        """KoshortTwitterStream is a tweepy listener to listen on filtered list of words.
-        Async version of KoshortTwitterStream.
+        """BirdmanTwitterStream is a tweepy listener to listen on filtered list of words.
+        Async version of BirdmanTwitterStream.
 
         Args:
             options (object): argparser argument namespace
@@ -115,7 +114,7 @@ class KoshortTwitterAsyncStream(tweepy.asynchronous.AsyncStream):
         self.access_token = options.access_token
         self.access_token_secret = options.access_token_secret
         
-        super(KoshortTwitterAsyncStream, self).__init__(
+        super(BirdmanTwitterAsyncStream, self).__init__(
             self.consumer_key, self.consumer_secret,
             self.access_token, self.access_token_secret
         )
@@ -292,11 +291,11 @@ class TwitterStreamer(BaseStreamer):
     def create_listener(self):
 
         if self.is_async:
-            self.stream = KoshortTwitterStream(
+            self.stream = BirdmanTwitterStream(
                 self.options, self.dirname, self.word_list
             )
         else:
-            self.stream = KoshortTwitterAsyncStream(
+            self.stream = BirdmanTwitterAsyncStream(
                 self.options, self.dirname, self.word_list
             )
 

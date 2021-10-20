@@ -1,23 +1,15 @@
 language: python
 
 python:
-    - "3.3"
-    - "3.4"
-    - "3.5"
-    - "3.6"
-    # - "3.7-dev"  -- 3.7 support is unavailable until tweepy issue get closed.
+    - "3.7"
 
 before_install:
     - if [[ $TRAVIS_PYTHON_VERSION == 2* ]]; then pip install -r requirements.txt; fi
     - if [[ $TRAVIS_PYTHON_VERSION == 3* ]]; then pip install -r requirements.txt; fi
     - pip install coveralls
-    - pip install pytest-cov
 
 install:
     - python setup.py -q install
 
 after_success:
     - coveralls
-
-script:
-    - coverage run --source=koshort -m py.test tests
