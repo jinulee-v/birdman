@@ -1,6 +1,14 @@
-tweepy==4.1.0
+# AsyncIO
 aiohttp<4,>=3.7.3
-oauthlib<4,>=3.1.0
+aiostream==0.4.3
+
+# HTML crawling & parsing
 beautifulsoup4==4.6.0
-colorama==0.3.9
 html5lib==1.1
+
+# Twitter streaming & authentication
+tweepy==4.1.0
+oauthlib<4,>=3.1.0
+
+# Miscellaneous
+colorama==0.3.9

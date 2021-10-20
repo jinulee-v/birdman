@@ -9,12 +9,12 @@ from koshort.stream.base import BaseStreamer
 from koshort.stream.active import ActiveStreamerConfig
 
 # Formatting
+import logging
 import re
 import time
 from datetime import datetime
 import colorama
 from colorama import Style, Fore
-
 
 class DCInsideStreamerConfig(ActiveStreamerConfig):
     """Config object for DCInsideStreamer.
@@ -57,9 +57,16 @@ class DCInsideStreamer(BaseStreamer):
     def __init__(self, config_obj):
 
         self.config = DCInsideStreamerConfig(config_obj)
+        self.name = 'dcinside.' + self.config.gallery_id
 
         self._session = requests.Session()
-
+        self.logger = logging.getLogger('asyncio.koshort.stream.dcinside.' + self.config.gallery_id)
+        self.process_logger()
+        if self.config.verbose:
+            self.logger.setLevel(logging.DEBUG)
+        else:
+            self.logger.setLevel(logging.WARNING)
+        
         self._lists_url = 'http://gall.dcinside.com/board/lists'
         self._view_url = 'http://gall.dcinside.com'
         self._comment_view_url = 'http://gall.dcinside.com/board/view'
@@ -175,20 +182,16 @@ class DCInsideStreamer(BaseStreamer):
         colorama.init()
 
         def summary(result):
-            if self.config.verbose:
-                print(result['url'])
-                print(Fore.CYAN + result['title'] + Fore.RESET)
-                print(Fore.CYAN + Style.DIM + result['written_at'] + Style.RESET_ALL + Fore.RESET)
-                print(Fore.RED + Style.DIM + result['nickname'] + Style.RESET_ALL + Fore.RESET)
-                print(Fore.MAGENTA + Style.DIM + '조회 %d / 추천 %d / 비추천 %d / 댓글 %d' % (result['view_cnt'], result['view_up'], result['view_dn'], result['comment_cnt']) + Style.RESET_ALL + Fore.RESET)
-                print(result['body'])
-                print()
-
-        if self.config.verbose:
-            print()
-            print("Start of crawling epoch")
-            print(datetime.now().isoformat())
-            print()
+            self.logger.debug(
+                result['url'] + '\n' + # URL
+                Fore.CYAN + result['title'] + Fore.RESET + '\n' + # Title
+                Fore.CYAN + result['written_at'] + Fore.RESET + '\n' + # Written at
+                Fore.RED + Style.DIM + result['nickname'] + Fore.RESET + '\n' + # Written by
+                Fore.MAGENTA + '조회 %d / 추천 %d / 비추천 %d / 댓글 %d' % (result['view_cnt'], result['view_up'], result['view_dn'], result['comment_cnt']) + Fore.RESET + '\n\n' + # Statistics
+                result['body'] # Body
+            )
+        
+        self.logger.info("Start of crawling epoch"
 
         new_post_id, new_datetime = self.config.current_post_id, self.config.current_datetime
         initial_result = True
@@ -201,10 +204,7 @@ class DCInsideStreamer(BaseStreamer):
             yield result
 
         if self.config.verbose:
-            print()
-            print("End of crawling epoch(reached config.current_post_id)")
-            print(datetime.now().isoformat())
-            print()
+            self.logger.info("End of crawling epoch(reached config.current_post_id)")
         self.config.set_current(new_post_id, new_datetime)
         await asyncio.sleep(self.config.recrawl_interval)
         self.job()
@@ -327,20 +327,19 @@ class NoSuchGalleryError(Exception):
 async def main():
     app1 = DCInsideStreamer({
         'verbose': 1,
-        'gallery_id': 'navy',
+        'gallery_id': 'cat',
         'current_datetime': "2021-10-20",
         'recrawl_interval': 60
     })
     app2 = DCInsideStreamer({
         'verbose': 1,
-        'gallery_id': 'marinecorps',
+        'gallery_id': 'dog',
         'current_datetime': "2021-10-20",
         'recrawl_interval': 60
     })
     app = stream.merge(app1.stream(), app2.stream())
     async with app.stream() as streamer:
         async for item in streamer:
-            print(item)
             pass
 
 

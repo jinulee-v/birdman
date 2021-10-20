@@ -4,6 +4,7 @@ from __future__ import absolute_import
 from __future__ import division
 
 import urllib3
+import logging
 
 
 class KoshortStreamerError(Exception):
@@ -18,13 +19,14 @@ class KoshortStreamerError(Exception):
 class BaseStreamerConfig(object):
     """Config object for BaseStreamer.
     """
-    
+
     def __init__(self, obj):
         """
         Args:
             obj (dict): result of YAML parsing.
         """
-        self.verbose = False
+        self.verbose = bool(obj['verbose'])
+
 
 class BaseStreamer(object):
     """BaseStreamer class contains:
@@ -41,9 +43,28 @@ class BaseStreamer(object):
     def show_config(self):
         """Print out config available and predefined values."""
 
+        string = 'Configuration for <%s>\n' % (self.name)
         for attr, value in sorted(vars(self.config).items()):
-            print("{} = {}".format(attr, value))
-        print()
+            string += "    {} = {}\n".format(attr, value)
+        string += "\n"
+        self.logger.info(string)
+    
+    def process_logger(self, stream=None, filename=None):
+        # Formatter
+        formatter = logging.Formatter('[%(levelname)s] ' + self.name 
++ ' %(asctime)s | %(message)s\n')
+        
+        # Handler
+        handler = logging.StreamHandler(stream)
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
+        if filename is not None:
+            if isinstance(filename, str):
+                filename = [filename]
+            for file in filename:
+                handler = logging.FileHandler(file, mode='a', encoding='UTF-8')
+                handler.setFormatter(formatter)
+                self.logger.addHandler(handler)
 
     async def stream(self):
         if self.config.verbose:
@@ -53,10 +74,10 @@ class BaseStreamer(object):
             async for result in self.job():
                 yield result
         except urllib3.exceptions.ProtocolError:
-            print("ProtocolError has raised but continue to stream.")
+            self.logger.warning("ProtocolError has raised but continue to stream.")
             self.stream()
         except RecursionError:
             return
         except KeyboardInterrupt:
-            print("User has interrupted.")
+            self.logger.error("User has interrupted.")
             return
