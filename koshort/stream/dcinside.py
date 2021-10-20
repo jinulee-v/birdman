@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 
 # Formatting
 import re
+import json
 from datetime import datetime
 import colorama
 from colorama import Style, Fore
@@ -35,8 +36,7 @@ class DCInsideStreamerConfig(ActiveStreamerConfig):
         self.name = 'dcinside.' + self.gallery_id
 
         # Should we include comments? (str)
-        self.include_comments = bool(obj.get('include_comments', 0))
-        self.comments_per_page = obj.get('comments_per_page', 40)
+        self.include_comments = bool(obj.get('include_comments', 1))
 
         # When do we stop
         init_post_id = obj.get('current_post_id', 0)
@@ -53,6 +53,8 @@ class DCInsideStreamerConfig(ActiveStreamerConfig):
 class DCInsideStreamer(BaseStreamer):
     """DCInside is a biggest community website in Korea.
     DCInsideStreamer helps to stream specific gallery from future to past.
+    
+    Special credits to "KotlinInside" & JellyBrick@github for finding perfect API endpoints
     """
 
     def __init__(self, config_obj):
@@ -63,9 +65,10 @@ class DCInsideStreamer(BaseStreamer):
 
         self.set_logger()
 
+        # FIXME someday we should all turn over from raw HTML parsing to API
         self._lists_url = 'http://gall.dcinside.com/board/lists'
         self._view_url = 'http://gall.dcinside.com'
-        self._comment_view_url = 'http://gall.dcinside.com/board/view'
+        self._comment_api_url = 'http://app.dcinside.com/api/comment_new.php'
 
     async def get_post_list(self, gallery_id):
         """DCinside Post generator
@@ -94,7 +97,7 @@ class DCInsideStreamer(BaseStreamer):
                 # if timeout occurs, retry
                 continue
 
-    async def get_post(self, gallery_id):
+    async def get_post(self):
         """DCinside Post generator
 
         Args:
@@ -104,6 +107,7 @@ class DCInsideStreamer(BaseStreamer):
             post (dict): Dict object containing relevant information about the post
         """
 
+        gallery_id = self.config.gallery_id
         try:
             async for url in self.get_post_list(gallery_id):
                 while True:
@@ -136,7 +140,7 @@ class DCInsideStreamer(BaseStreamer):
 
                 if self.config.include_comments and 'comment_cnt' in post:
                     if post['comment_cnt'] > 0:
-                        post['comments'] = self.get_all_comments(gallery_id, post_no, post['comment_cnt'])
+                        post['comments'] = await self.get_all_comments(gallery_id, post_no)
                     else:
                         post['comments'] = []
 
@@ -151,47 +155,59 @@ class DCInsideStreamer(BaseStreamer):
         except AttributeError:
             return
 
-    def get_all_comments(self, gallery_id, post_no, comment_cnt):
+    async def get_all_comments(self, gallery_id, post_no):
+        """Get all comments by DCInside mobile app API.
         """
-        FIXME: get_all_comments() currently not available
-        """
-        return []
-        # comment_page_cnt = (comment_cnt - 1) // self.config.comments_per_page + 1
-        # comments = []
-        # headers = {**self.config.header, **{'X-Requested-With': 'XMLHttpRequest'}}
-        # data = {'ci_t': self._session.cookies['ci_c'], 'id': gallery_id, 'no': post_no}
+        comments = []
+        async with self._session.get(
+                            '%s?id=%s&no=%s' % (self._comment_api_url, gallery_id, post_no),
+                            headers=self.config.header,
+                            timeout=self.config.timeout
+                        ) as response:
 
-        # for i in range(comment_page_cnt):
-        #     data['comment_page'] = i + 1
-        #     response = self._session.post(self._comment_view_url, headers=headers, data=data)
+            response = json.loads(await response.text())
+            for comment in response[0]['comment_list']:
+                comment_data = {
+                        'user_id': comment['user_id'],
+                        'user_ip': comment['ipData'],
+                        'nickname': comment['name'],
 
-        #     batch = self.parse_comments(response.text)
+                        'written_at': datetime.strptime(comment['date_time'], "%Y.%m.%d %H:%M").isoformat(),
 
-        #     if not batch:
-        #         break
+                        'body': comment['comment_memo'],
 
-        #     comments = batch + comments
-
-        # return comments
+                        'subcomments': []
+                }
+                if 'under_step' not in comment:
+                    comments.append(comment_data)
+                else:
+                    comments[-1]['subcomments'].append(comment_data)
+            return comments
 
     async def job(self):
         colorama.init()
 
         def summary(result):
-            self.logger.debug(
-                result['url'] + '\n' + # URL
-                Fore.CYAN + result['title'] + Fore.RESET + '\n' + # Title
-                Fore.CYAN + result['written_at'] + Fore.RESET + '\n' + # Written at
-                Fore.RED + Style.DIM + result['nickname'] + Fore.RESET + '\n' + # Written by
-                Fore.MAGENTA + '조회 %d / 추천 %d / 비추천 %d / 댓글 %d' % (result['view_cnt'], result['view_up'], result['view_dn'], result['comment_cnt']) + Fore.RESET + '\n\n' + # Statistics
-                result['body'] # Body
-            )
+            text = ''
+            text += result['url'] + '\n' # URL
+            text += Fore.CYAN + result['title'] + Fore.RESET + '\n' # Title
+            text += Fore.CYAN + result['written_at'] + Fore.RESET + '\n' # Written at
+            text += Fore.RED + result['nickname'] + Fore.RESET + '\n' # Written by
+            text += Fore.MAGENTA + '조회 %d / 추천 %d / 비추천 %d / 댓글 %d' % (result['view_cnt'], result['view_up'], result['view_dn'], result['comment_cnt']) + Fore.RESET + '\n\n' # Statistics
+            text += result['body'] + '\n\n' # Body
+            if self.config.include_comments:
+                for comment in result['comments']:
+                    text += Fore.RED + comment['nickname'] + Fore.RESET + ' (' + comment['written_at'] + ') | ' + comment['body'] + '\n'
+                    for subcomment in comment['subcomments']:
+                        text += '└ ' + Fore.RED + subcomment['nickname'] + Fore.RESET + ' (' + subcomment['written_at'] + ') | ' + subcomment['body'] + '\n'
+
+            self.logger.debug(text)
 
         self.logger.info("Start of crawling epoch")
 
         new_post_id, new_datetime = self.config.current_post_id, self.config.current_datetime
         initial_result = True
-        async for result in self.get_post(self.config.gallery_id):
+        async for result in self.get_post():
             if initial_result:
                 new_post_id, new_datetime = result['post_no'], result['written_at']
                 initial_result = False
@@ -216,7 +232,7 @@ class DCInsideStreamer(BaseStreamer):
         Returns:
             post_list (list): List object containing URL(after domain only) of posts within the page 
         """
-        
+
         try:
             soup = BeautifulSoup(markup, parser).find('div', attrs={'class': 'gall_listwrap'})
             if '해당 갤러리는 존재하지 않습니다' in str(soup):
@@ -249,6 +265,7 @@ class DCInsideStreamer(BaseStreamer):
             if '해당 갤러리는 존재하지 않습니다' in str(soup):
                 raise NoSuchGalleryError
         except:
+            # FIXME categorize exceptions
             return None
 
         timestamp = soup.find('span', attrs={'class': 'gall_date'}).getText()
@@ -284,36 +301,6 @@ class DCInsideStreamer(BaseStreamer):
         }
 
         return post
-
-    @staticmethod
-    def parse_comments(text):
-        """
-        FIXME: parse_comments() currently not available
-        """
-        return []
-        # comments = []
-        # soup = BeautifulSoup(text, 'html5lib')
-        # comment_elements = soup.find_all('tr', class_='reply_line')
-
-        # for element in comment_elements:
-        #     user_layer = element.find('td', class_='user_layer')
-        #     nickname = user_layer['user_name']
-        #     user_id = user_layer['user_id']
-        #     body = element.find('td', class_='reply')
-        #     user_ip = '' if user_id else body.find('span').extract().text
-        #     timestamp = element.find('td', class_='retime').text
-
-        #     comment = {
-        #         'user_id': user_id,
-        #         'user_ip': user_ip,
-        #         'nickname': nickname,
-        #         'written_at': timestamp,
-        #         'body': body.text.strip()
-        #     }
-
-        #     comments.append(comment)
-
-        # return comments
 
 
 class NoSuchGalleryError(Exception):

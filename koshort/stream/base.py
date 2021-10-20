@@ -46,7 +46,6 @@ class BaseStreamer(object):
         string = 'Configuration for <%s>\n' % (self.config.name)
         for attr, value in sorted(vars(self.config).items()):
             string += "    {} = {}\n".format(attr, value)
-        string += "\n"
         self.logger.info(string)
 
     def set_logger(self, stream=None, filename=None):
