@@ -8,8 +8,13 @@ __all__ = [
     "__copyright__",
 ]
 
-__version__ = '0.4.1.7'
-__title__ = 'koshort'
-__author__ = 'nyanye'
+# version criteria
+# A.B.C
+# A: Uncompatible change.
+# B: Major change, but compatibility ensured somehow
+# C: Minor change; no change in any interface
+__version__ = '0.0.1'
+__title__ = 'birdman'
+__author__ = 'jinulee-v'
 __license__ = 'GPL v3'
-__copyright__ = 'Copyright 2018 Nyanye'
+__copyright__ = 'Copyright 2021 jinulee-v'

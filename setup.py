@@ -30,33 +30,26 @@ def requirements():
 def setup_package():
     about = get_version()
     setup(
-        name='koshort',
+        name='birdman',
         version=about['__version__'],
-        description='koshort is a Python package for Korean internet spoken language crawling and processing... or maybe Korean domestic cat.',
+        description='Birdman is a powerful package for asynchronous multi-thread streaming of any web content. Ignorantly watch over like a bird, and we will bring you the whole world. That is the virtue of unexpected ignorance.',
         long_description="""\
-    Social network services and other internet communities are open and rich data source of human spoken language.
-    But due to the issues of privacy and policy of each website, sharing a bunch of retrieved text data is normally prohibited.
-    To solve the most major Natural Language Processing (NLP) problem under this circumstances, researchers had to rely on limited public datasets and data brought by their company.
-    Otherwise they would implement their domain-specific crawler for each case.
-
-    Koshort is hardly inspired by the project KoNLPy, with similar philosophy. It is not about recreating another crawler but to unify efforts around so that anyone can accelerate their projects.
+    (Inspired by Koshort)
+    Birdman is a powerful and well-structured package for asynchronous streaming.
+    Asynchronous and 
+    Birdman integrates different crawlers (for differnet websites!) and streaming APIs into any listener that user require. You can create and add your own listner without any knowledge about asynchronous coding!
+    Simply say out the script, and soon you will glide over the world like a bird.
             """,
-        url='http://koshort.readthedocs.io',
-        author='nyanye',
-        author_email='iam@nyanye.com',
-        keywords=['Korean', 'CJK',
-                'NLP', 'natural language processing',
-                'CL', 'computational linguistics',
-                'tagging', 'tokenizing', 'linguistics', 'text analytics'],
+        url='http://birdman.readthedocs.io',
+        author='jinulee-v',
+        author_email='jinulee.v@gmail.com',
+        keywords=['crawling', 'streaming', 'scraping', 'text analytics'],
         classifiers=[
             'Intended Audience :: Developers',
             'Intended Audience :: Education',
             'Intended Audience :: Information Technology',
             'Intended Audience :: Science/Research',
-            'Programming Language :: Python :: 3.3',
-            'Programming Language :: Python :: 3.4',
-            'Programming Language :: Python :: 3.5',
-            'Programming Language :: Python :: 3.6',
+            'Programming Language :: Python :: 3.7',
             'Topic :: Scientific/Engineering',
             'Topic :: Scientific/Engineering :: Artificial Intelligence',
             'Topic :: Scientific/Engineering :: Human Machine Interfaces',
@@ -66,17 +59,10 @@ def setup_package():
             'Topic :: Text Processing :: General',
             'Topic :: Text Processing :: Indexing',
             'Topic :: Text Processing :: Linguistic',
-            'Development Status :: 4 - Beta',
+            'Development Status :: 2 - Pre-Alpha',
             'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
         ],
         entry_points={
-            'console_scripts': [
-                'stream_twitter = koshort.stream.twitter:main',
-                'stream_naver = koshort.stream.naver:main',
-                'stream_daum = koshort.stream.daum:main',
-                'stream_google = koshort.stream.google_trend:main',
-                'stream_dcinside = koshort.stream.dcinside:main',
-            ],
         },
         license='GPL v3+',
         packages=find_packages(),
