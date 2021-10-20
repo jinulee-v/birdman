@@ -1,14 +1,18 @@
-from datetime import datetime
-import re
+# AsyncIO
 import asyncio
+from aiostream import stream
+
+# Network
+import requests
 from bs4 import BeautifulSoup
 from koshort.stream.base import BaseStreamer
 from koshort.stream.active import ActiveStreamerConfig
 
-import requests
+# Formatting
+import re
 import time
+from datetime import datetime
 import colorama
-
 from colorama import Style, Fore
 
 
@@ -321,12 +325,23 @@ class NoSuchGalleryError(Exception):
 
 
 async def main():
-    app = DCInsideStreamer({})
-    app.config.verbose = True
-    app.config.current_post_id = 1565715
-    app.config.recrawl_interval = 60
-    async for _ in app.stream():
-        pass
+    app1 = DCInsideStreamer({
+        'verbose': 1,
+        'gallery_id': 'navy',
+        'current_datetime': "2021-10-20",
+        'recrawl_interval': 60
+    })
+    app2 = DCInsideStreamer({
+        'verbose': 1,
+        'gallery_id': 'marinecorps',
+        'current_datetime': "2021-10-20",
+        'recrawl_interval': 60
+    })
+    app = stream.merge(app1.stream(), app2.stream())
+    async with app.stream() as streamer:
+        async for item in streamer:
+            print(item)
+            pass
 
 
 if __name__ == "__main__":
