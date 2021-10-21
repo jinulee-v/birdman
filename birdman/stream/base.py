@@ -27,7 +27,7 @@ class BaseStreamerConfig(object):
         Args:
             obj (dict): result of YAML parsing.
         """
-        self.verbose = bool(obj['verbose'])
+        self.verbose = bool(obj.get('verbose', 0))
 
 
 class BaseStreamer(object):
