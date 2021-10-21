@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
+import asyncio
+
 from birdman.stream.base import BaseStreamer, BaseStreamerConfig
 
 from abc import ABCMeta, abstractmethod
-
 
 class ActiveStreamerConfig(BaseStreamerConfig):
     """Config object for Active Streamer.
