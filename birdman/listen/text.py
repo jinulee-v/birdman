@@ -15,20 +15,20 @@ class TextListener(BaseListener):
     It is directly fed to built-in format() function, so check "python format() named placeholder syntax" for good.
     """
 
-    def __init__(self, file, encoding='UTF-8', formatstr="%(url)s\t%(title)s\t%(nickname)s\t%(written_at)s"):
+    def __init__(self, file, encoding='UTF-8', buffering=1, formatstr="{url}\t{title}\t{nickname}\t{written_at}"):
         """
         Args:
-            file, encoding: Equal to python built-in `open()`
+            file, encoding, bufsize: Equal to python built-in `open()`
             keys: Iterable(str).
                   If not None, only keys from this variable will be stored.
         """
-        self.file = open(file, mode='a', encoding=encoding)
+        self.file = open(file, mode='a', encoding=encoding, buffering=buffering)
 
         self.formatstr = formatstr
 
     def listen(self, result):
         result = format_dict(result)
+        result_str = self.formatstr.format(**result)
         self.file.write(
-            self.formatstr.format(result)
-            + '\n'
+            result_str + '\n'
         )

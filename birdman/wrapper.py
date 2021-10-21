@@ -64,11 +64,16 @@ def main():
     from birdman.stream.dcinside import DCInsideStreamer
     from birdman.stream.todayhumor import TodayHumorStreamer
 
+    from birdman.listen.text import TextListener
+
     streamers = [
         DCInsideStreamer({'verbose': 1}),
         TodayHumorStreamer({'verbose': 1, 'include_comments': 0})
     ]
-    birdman = Birdman(streamers, [])
+    listeners = [
+        TextListener('test.log')
+    ]
+    birdman = Birdman(streamers, listeners)
     birdman.start()
 
 
