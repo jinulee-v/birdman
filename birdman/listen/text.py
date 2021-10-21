@@ -15,16 +15,21 @@ class TextListener(BaseListener):
     It is directly fed to built-in format() function, so check "python format() named placeholder syntax" for good.
     """
 
-    def __init__(self, file, encoding='UTF-8', buffering=1, formatstr="{url}\t{title}\t{nickname}\t{written_at}"):
+    def __init__(self, obj):
         """
         Args:
             file, encoding, bufsize: Equal to python built-in `open()`
             keys: Iterable(str).
                   If not None, only keys from this variable will be stored.
         """
+        super(TextListener, self).__init__(obj)
+
+        file = obj.get('file', 'test.log')
+        encoding = obj.get('encoding', 'UTF-8')
+        buffering = obj.get('buffering', 1)
         self.file = open(file, mode='a', encoding=encoding, buffering=buffering)
 
-        self.formatstr = formatstr
+        self.formatstr = obj.get('formatstr', "{url}\t{title}\t{nickname}\t{written_at}")
 
     def listen(self, result):
         result = format_dict(result)

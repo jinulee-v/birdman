@@ -83,7 +83,7 @@ class BaseStreamer(object):
 
         try:
             async for result in self.job():
-                yield result
+                yield self.config.name, result
         except urllib3.exceptions.ProtocolError:
             self.logger.warning("ProtocolError has raised but continue to stream.")
             self.stream()

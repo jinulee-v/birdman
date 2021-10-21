@@ -12,6 +12,14 @@ class BaseListener(object):
 
     __metaclass__ = ABCMeta
 
+    def __init__(self, obj):
+        """
+        Args:
+            listen_to: Iterable[str]. List of Streamer.config.name to listen.
+                       For default, listen on everything.
+        """
+        self.listen_to = obj.get('listen_to', 'None')
+
     @abstractmethod
     def listen(self, result):
         '''Must override.

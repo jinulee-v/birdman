@@ -14,7 +14,7 @@ class Birdman(object):
     def __init__(self, streamers, listeners):
         self._streamers = streamers
         self._listeners = listeners
-        
+
         for streamer in streamers:
             if not isinstance(streamer, BaseStreamer):
                 raise ValueError("`streamers` argument must be an iterable of BaseStreamer objects")
@@ -29,9 +29,10 @@ class Birdman(object):
             streamer.stream() for streamer in self._streamers
         ])
         async with self._stream.stream() as streamer:
-            async for item in streamer:
+            async for name, item in streamer:
                 for listener in self._listeners:
-                    listener.listen(item)
+                    if listener.listen_to is None or name in listener.listen_to:
+                        listener.listen(item)
 
     def start(self):
         """Main entry point of the Birdman object.
@@ -67,11 +68,19 @@ def main():
     from birdman.listen.text import TextListener
 
     streamers = [
-        DCInsideStreamer({'verbose': 1}),
+        DCInsideStreamer({'gallery_id': 'cat', 'verbose': 1}),
+        DCInsideStreamer({'gallery_id': 'dog', 'verbose': 1}),
         TodayHumorStreamer({'verbose': 1, 'include_comments': 0})
     ]
     listeners = [
-        TextListener('test.log')
+        TextListener({
+            'file': 'test.log',
+            'listen_to': ['dcinside.cat', 'dcinside.dog']
+        }),
+        TextListener({
+            'file': 'test2.log',
+            'listen_to': ['dcinside.cat', 'todayhumor.animal']
+        }),
     ]
     birdman = Birdman(streamers, listeners)
     birdman.start()
