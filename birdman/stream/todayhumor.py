@@ -15,7 +15,7 @@ from colorama import Style, Fore
 
 from birdman.stream import register_streamer
 from birdman.stream.active import ActiveStreamer, ActiveStreamerConfig
-
+from birdman.error import ParserUpdateRequiredError, UnknownError
 
 class TodayHumorStreamerConfig(ActiveStreamerConfig):
     """Config object for TodayHumorStreamer.
@@ -142,8 +142,6 @@ class TodayHumorStreamer(ActiveStreamer):
                     return
 
                 yield post
-        except NoSuchBoardError:
-            return
         except AttributeError:
             return
 
@@ -217,18 +215,19 @@ class TodayHumorStreamer(ActiveStreamer):
 
         try:
             soup = BeautifulSoup(markup, parser).find('table', attrs={'class': 'table_list'})
-            if '해당 갤러리는 존재하지 않습니다' in str(soup):
-                raise NoSuchBoardError
-        except NoSuchBoardError:
-            return None
+            if '존재하지 않는 게시판입니다.' in str(soup):
+                raise ParserUpdateRequiredError(self.config.name, "Board `%s` does not exists in TodayHumor." % self.config.board_id)
+            raw_post_list = soup.find_all('td', attrs={'class': 'subject'})
 
-        raw_post_list = soup.find_all('td', attrs={'class': 'subject'})
+            # remove NOTICE posts(fixed at the top of the list)
+            post_list = [
+                tr.find('a')['href'] for tr in raw_post_list
+            ]
+            return post_list
+        except (AttributeError, KeyError) as er:
+            raise ParserUpdateRequiredError(self.config.name, "Website HTML structure may has been changed.")
 
-        # remove NOTICE posts(fixed at the top of the list)
-        post_list = [
-            tr.find('a')['href'] for tr in raw_post_list
-        ]
-        return post_list
+        raise UnknownError(self.config.name)
 
     @staticmethod
     def parse_post(markup, parser):
@@ -243,54 +242,50 @@ class TodayHumorStreamer(ActiveStreamer):
         """
         try:
             soup = BeautifulSoup(markup, parser).find('div', attrs={'class': 'containerInner'})
-            # FIXME: if wrong ID,
-            # if '해당 갤러리는 존재하지 않습니다' in str(soup):
-            #     raise NoSuchBoardError
-        except NoSuchBoardError:
-            # FIXME categorize exceptions
-            return None
+            if '존재하지 않는 게시판입니다.' in str(soup):
+                raise ParserUpdateRequiredError(self.config.name, "Board `%s` does not exists in TodayHumor." % self.config.board_id)
 
-        post_info = soup.find('div', attrs={'class': 'writerInfoContents'})
+            post_info = soup.find('div', attrs={'class': 'writerInfoContents'})
 
-        user_id = post_info.find('span', attrs={'id': 'viewPageWriterNameSpan'})['mn']
-        nickname = post_info.find('span', attrs={'id': 'viewPageWriterNameSpan'})['name']
+            user_id = post_info.find('span', attrs={'id': 'viewPageWriterNameSpan'})['mn']
+            nickname = post_info.find('span', attrs={'id': 'viewPageWriterNameSpan'})['name']
 
-        view_updn = int(post_info.find('span', attrs={'class', 'view_ok_nok'}).getText())
-        
-        for div in post_info.find_all('div'):
-            if u'등록시간' in div.get_text():
-                timestamp = div.getText().strip().replace(u'등록시간 : ', '')
-                timestamp = datetime.strptime(timestamp, "%Y/%m/%d %H:%M:%S").isoformat()
-            elif u'조회수' in div.get_text():
-                view_cnt = int(div.getText().replace(u'조회수 : ', ''))
-            elif u'댓글' in div.get_text():
-                comment_cnt = int(div.getText().replace(u'댓글 : ', '').replace(u'개', ''))
-            elif 'IP' in div.get_text():
-                user_ip = div.getText().replace('IP : ', '')
+            view_updn = int(post_info.find('span', attrs={'class', 'view_ok_nok'}).getText())
 
-        title = soup.find('div', attrs={'class': 'viewSubjectDiv'}).getText().strip()
+            for div in post_info.find_all('div'):
+                if u'등록시간' in div.get_text():
+                    timestamp = div.getText().strip().replace(u'등록시간 : ', '')
+                    timestamp = datetime.strptime(timestamp, "%Y/%m/%d %H:%M:%S").isoformat()
+                elif u'조회수' in div.get_text():
+                    view_cnt = int(div.getText().replace(u'조회수 : ', ''))
+                elif u'댓글' in div.get_text():
+                    comment_cnt = int(div.getText().replace(u'댓글 : ', '').replace(u'개', ''))
+                elif 'IP' in div.get_text():
+                    user_ip = div.getText().replace('IP : ', '')
 
-        body = soup.find('div', attrs={'class': 'viewContent'}).get_text('\n', strip=True)
+            title = soup.find('div', attrs={'class': 'viewSubjectDiv'}).getText().strip()
 
-        post = {
-            'user_id': user_id,
-            'user_ip': user_ip,
-            'nickname': nickname,
+            body = soup.find('div', attrs={'class': 'viewContent'}).get_text('\n', strip=True)
 
-            'title': title,
-            'written_at': timestamp,
+            post = {
+                'user_id': user_id,
+                'user_ip': user_ip,
+                'nickname': nickname,
 
-            'view_updn': view_updn,
-            'view_cnt': view_cnt,
-            'comment_cnt': comment_cnt,
-            'body': body,
-        }
+                'title': title,
+                'written_at': timestamp,
 
-        return post
+                'view_updn': view_updn,
+                'view_cnt': view_cnt,
+                'comment_cnt': comment_cnt,
+                'body': body,
+            }
 
+            return post
+        except (AttributeError, KeyError) as er:
+            raise ParserUpdateRequiredError(self.config.name, "Website HTML structure may has been changed.")
 
-class NoSuchBoardError(Exception):
-    pass
+        raise UnknownError(self.config.name)
 
 
 async def main():

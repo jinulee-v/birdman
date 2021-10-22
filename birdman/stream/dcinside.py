@@ -15,6 +15,7 @@ from colorama import Fore
 
 from birdman.stream import register_streamer
 from birdman.stream.active import ActiveStreamer, ActiveStreamerConfig
+from birdman.error import ParserUpdateRequiredError, UnknownError
 
 
 class DCInsideStreamerConfig(ActiveStreamerConfig):
@@ -144,8 +145,6 @@ class DCInsideStreamer(ActiveStreamer):
                     return
 
                 yield post
-        except NoSuchGalleryError:
-            return
         except AttributeError:
             return
 
@@ -220,18 +219,19 @@ class DCInsideStreamer(ActiveStreamer):
         try:
             soup = BeautifulSoup(markup, parser).find('div', attrs={'class': 'gall_listwrap'})
             if '해당 갤러리는 존재하지 않습니다' in str(soup):
-                raise NoSuchGalleryError
-        except NoSuchGalleryError:
-            pass
+                raise ParserUpdateRequiredError(self.config.name, "Gallery `%s` does not exists in DCInside." % self.config.board_id)
 
-        raw_post_list = soup.find_all('tr', attrs={'class': 'us-post'})
+            raw_post_list = soup.find_all('tr', attrs={'class': 'us-post'})
+            # remove NOTICE posts(fixed at the top of the list)
+            post_list = [
+                tr.find('a')['href'] for tr in raw_post_list
+                if tr['data-type'] == "icon_txt"
+            ]
+            return post_list
+        except (AttributeError, KeyError) as er:
+            raise ParserUpdateRequiredError(self.config.name, "Website HTML structure may has been changed.")
 
-        # remove NOTICE posts(fixed at the top of the list)
-        post_list = [
-            tr.find('a')['href'] for tr in raw_post_list
-            if tr['data-type'] == "icon_txt"
-        ]
-        return post_list
+        raise UnknownError(self.config.name)
 
     @staticmethod
     def parse_post(markup, parser):
@@ -247,47 +247,45 @@ class DCInsideStreamer(ActiveStreamer):
         try:
             soup = BeautifulSoup(markup, parser).find('div', attrs={'class': 'view_content_wrap'})
             if '해당 갤러리는 존재하지 않습니다' in str(soup):
-                raise NoSuchGalleryError
-        except NoSuchGalleryError:
-            return None
+                raise ParserUpdateRequiredError(self.config.name, "Gallery `%s` does not exists in DCInside." % self.config.board_id)
 
-        timestamp = soup.find('span', attrs={'class': 'gall_date'}).getText()
-        timestamp = datetime.strptime(timestamp, "%Y.%m.%d %H:%M:%S").isoformat()
+            timestamp = soup.find('span', attrs={'class': 'gall_date'}).getText()
+            timestamp = datetime.strptime(timestamp, "%Y.%m.%d %H:%M:%S").isoformat()
 
-        user_info = soup.find('div', attrs={'class': 'gall_writer'})
-        user_id = user_info['data-uid']
-        user_ip = user_info['data-ip']
-        nickname = user_info['data-nick']
+            user_info = soup.find('div', attrs={'class': 'gall_writer'})
+            user_id = user_info['data-uid']
+            user_ip = user_info['data-ip']
+            nickname = user_info['data-nick']
 
-        view_cnt = int(soup.find('span', attrs={'class': 'gall_count'}).getText().replace(u'조회 ', ''))
-        view_up = int(soup.find('p', attrs={'class', 'up_num'}).getText())
-        view_dn = int(soup.find('p', attrs={'class', 'down_num'}).getText())
-        comment_cnt = int(soup.find('span', attrs={'class': 'gall_comment'}).getText().replace(u'댓글 ', ''))
+            view_cnt = int(soup.find('span', attrs={'class': 'gall_count'}).getText().replace(u'조회 ', ''))
+            view_up = int(soup.find('p', attrs={'class', 'up_num'}).getText())
+            view_dn = int(soup.find('p', attrs={'class', 'down_num'}).getText())
+            comment_cnt = int(soup.find('span', attrs={'class': 'gall_comment'}).getText().replace(u'댓글 ', ''))
 
-        title = soup.find('span', attrs={'class': 'title_subject'}).getText()
+            title = soup.find('span', attrs={'class': 'title_subject'}).getText()
 
-        body = soup.find('div', attrs={'class': 'write_div'}).get_text('\n', strip=True)
+            body = soup.find('div', attrs={'class': 'write_div'}).get_text('\n', strip=True)
 
-        post = {
-            'user_id': user_id,
-            'user_ip': user_ip,
-            'nickname': nickname,
+            post = {
+                'user_id': user_id,
+                'user_ip': user_ip,
+                'nickname': nickname,
 
-            'title': title,
-            'written_at': timestamp,
+                'title': title,
+                'written_at': timestamp,
 
-            'view_up': view_up,
-            'view_dn': view_dn,
-            'view_cnt': view_cnt,
-            'comment_cnt': comment_cnt,
-            'body': body,
-        }
+                'view_up': view_up,
+                'view_dn': view_dn,
+                'view_cnt': view_cnt,
+                'comment_cnt': comment_cnt,
+                'body': body,
+            }
 
-        return post
+            return post
+        except (AttributeError, KeyError) as er:
+            raise ParserUpdateRequiredError(self.config.name, "Website HTML structure may has been changed.")
 
-
-class NoSuchGalleryError(Exception):
-    pass
+        raise UnknownError(self.config.name)
 
 
 async def main():
