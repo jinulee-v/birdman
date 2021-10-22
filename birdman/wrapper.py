@@ -2,8 +2,47 @@
 import asyncio
 import aiostream
 
+import yaml
+
 from birdman.stream.base import BaseStreamer
 from birdman.listen.base import BaseListener
+
+from birdman.listen import get_listener
+from birdman.stream import get_streamer
+
+
+def init_birdman_from_yaml(file, encoding='UTF-8'):
+    listeners = []
+    listener_global = None
+    streamers = []
+    streamer_global = None
+
+    with open(file, 'r', encoding=encoding) as file:
+        obj = yaml.safe_load(file)
+        for streamer in obj['streamer']:
+            if streamer['class'] == 'global':
+                if streamer_global is None:
+                    streamer_global = {**streamer}
+                    streamer_global.pop('class')
+                else:
+                    raise ValueError("Only a single `global` can be defined in streamers")
+            else:
+                if streamer_global is not None:
+                    streamer = {**streamer, **streamer_global}
+                streamers.append(get_streamer(streamer['class'])(streamer))
+        for listener in obj['listener']:
+            if listener['class'] == 'global':
+                if listener_global is None:
+                    listener_global = {**listener}
+                    listener_global.pop('class')
+                else:
+                    raise ValueError("Only a single `global` can be defined in listeners")
+            else:
+                if listener_global is not None:
+                    listener = {**listener, **listener_global}
+                listeners.append(get_listener(listener['class'])(listener))
+
+    return Birdman(streamers, listeners)
 
 
 class Birdman(object):
@@ -17,10 +56,10 @@ class Birdman(object):
 
         for streamer in streamers:
             if not isinstance(streamer, BaseStreamer):
-                raise ValueError("`streamers` argument must be an iterable of BaseStreamer objects")
+                raise ValueError("`streamers` argument must be an iterable of BaseStreamer instances")
         for listener in listeners:
             if not isinstance(listener, BaseListener):
-                raise ValueError("`listeners` argument must be an iterable of BaseListener objects")
+                raise ValueError("`listeners` argument must be an iterable of BaseListener instances")
 
     async def _stream_routine(self):
         """Asynchronous streaming & listening starts here.
@@ -46,7 +85,7 @@ class Birdman(object):
 
     def add_streamer(self, streamer):
         if not isinstance(streamer, BaseStreamer):
-            raise ValueError("`streamer` argument must be a BaseStreamer object")
+            raise ValueError("`streamer` argument must be a BaseStreamer instance")
 
         self.loop.stop()
         self._streamers.append(streamer)
@@ -54,37 +93,8 @@ class Birdman(object):
 
     def add_listener(self, listener):
         if not isinstance(listener, BaseListener):
-            raise ValueError("`listener` argument must be a BaseListener object")
+            raise ValueError("`listener` argument must be a BaseListener instance")
 
         self.loop.stop()
         self._listeners.append(listener)
         self.start()
-
-
-def main():
-    from birdman.stream.dcinside import DCInsideStreamer
-    from birdman.stream.todayhumor import TodayHumorStreamer
-
-    from birdman.listen.text import TextListener
-
-    streamers = [
-        DCInsideStreamer({'gallery_id': 'cat', 'verbose': 1}),
-        DCInsideStreamer({'gallery_id': 'dog', 'verbose': 1}),
-        TodayHumorStreamer({'verbose': 1, 'include_comments': 0})
-    ]
-    listeners = [
-        TextListener({
-            'file': 'test.log',
-            'listen_to': ['dcinside.cat', 'dcinside.dog']
-        }),
-        TextListener({
-            'file': 'test2.log',
-            'listen_to': ['dcinside.cat', 'todayhumor.animal']
-        }),
-    ]
-    birdman = Birdman(streamers, listeners)
-    birdman.start()
-
-
-if __name__ == '__main__':
-    main()

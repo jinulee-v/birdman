@@ -9,7 +9,7 @@ import logging
 from abc import ABCMeta, abstractmethod
 
 
-class KoshortStreamerError(Exception):
+class BirdmanStreamerError(Exception):
     def __init__(self, message, streamer):
         self.message = message
         self.streamer = streamer

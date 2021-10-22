@@ -11,9 +11,11 @@ import re
 import json
 from datetime import datetime
 import colorama
-from colorama import Style, Fore
+from colorama import Fore
 
+from birdman.stream import register_streamer
 from birdman.stream.active import ActiveStreamer, ActiveStreamerConfig
+
 
 class DCInsideStreamerConfig(ActiveStreamerConfig):
     """Config object for DCInsideStreamer.
@@ -48,10 +50,11 @@ class DCInsideStreamerConfig(ActiveStreamerConfig):
         self.current_datetime = new_datetime
 
 
+@register_streamer("dcinside")
 class DCInsideStreamer(ActiveStreamer):
     """DCInside is a biggest community website in Korea.
     DCInsideStreamer helps to stream specific gallery from future to past.
-    
+
     Special credits to "KotlinInside" & JellyBrick@github for finding perfect API endpoints
     """
 

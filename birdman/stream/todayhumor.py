@@ -13,7 +13,9 @@ from datetime import datetime
 import colorama
 from colorama import Style, Fore
 
+from birdman.stream import register_streamer
 from birdman.stream.active import ActiveStreamer, ActiveStreamerConfig
+
 
 class TodayHumorStreamerConfig(ActiveStreamerConfig):
     """Config object for TodayHumorStreamer.
@@ -48,11 +50,10 @@ class TodayHumorStreamerConfig(ActiveStreamerConfig):
         self.current_datetime = new_datetime
 
 
+@register_streamer("todayhumor")
 class TodayHumorStreamer(ActiveStreamer):
-    """TodayHumor is a biggest community website in Korea.
+    """TodayHumor is a liberal-side community about various subjects.
     TodayHumorStreamer helps to stream specific board from future to past.
-    
-    Special credits to "KotlinInside" & JellyBrick@github for finding perfect API endpoints
     """
 
     def __init__(self, config_obj):

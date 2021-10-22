@@ -1,3 +1,4 @@
+from birdman.listen import register_listener
 from birdman.listen.base import BaseListener
 
 
@@ -9,6 +10,7 @@ class format_dict(dict):
         return ""
 
 
+@register_listener('text')
 class TextListener(BaseListener):
     """TextListener records the result dict in given format to the desired file.
     formatstr decides your desired text format.

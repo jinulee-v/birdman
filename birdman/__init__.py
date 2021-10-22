@@ -14,4 +14,7 @@ You can use following tricks when you use them.
 from __future__ import absolute_import
 
 from birdman.about import *
+from birdman import listen  # Subpackage pre-loading
 from birdman import stream  # Subpackage pre-loading
+
+from birdman.wrapper import *
