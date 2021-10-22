@@ -26,3 +26,10 @@ class BaseListener(object):
         Listens to the result object(dict) and process it however you like.
         '''
         pass
+    
+    @abstractmethod
+    async def close(self):
+        '''Must override.
+        How to properly close this listener?
+        '''
+        pass

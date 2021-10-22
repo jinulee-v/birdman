@@ -59,10 +59,9 @@ class DCInsideStreamer(ActiveStreamer):
     """
 
     def __init__(self, config_obj):
+        super(DCInsideStreamer, self).__init__()
 
         self.config = DCInsideStreamerConfig(config_obj)
-
-        self._session = aiohttp.ClientSession()
 
         self.set_logger()
         # Use colorama
@@ -222,8 +221,8 @@ class DCInsideStreamer(ActiveStreamer):
             soup = BeautifulSoup(markup, parser).find('div', attrs={'class': 'gall_listwrap'})
             if '해당 갤러리는 존재하지 않습니다' in str(soup):
                 raise NoSuchGalleryError
-        except:
-            return None
+        except NoSuchGalleryError:
+            pass
 
         raw_post_list = soup.find_all('tr', attrs={'class': 'us-post'})
 
@@ -249,8 +248,7 @@ class DCInsideStreamer(ActiveStreamer):
             soup = BeautifulSoup(markup, parser).find('div', attrs={'class': 'view_content_wrap'})
             if '해당 갤러리는 존재하지 않습니다' in str(soup):
                 raise NoSuchGalleryError
-        except:
-            # FIXME categorize exceptions
+        except NoSuchGalleryError:
             return None
 
         timestamp = soup.find('span', attrs={'class': 'gall_date'}).getText()

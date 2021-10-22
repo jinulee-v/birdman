@@ -1,7 +1,7 @@
 # AsyncIO
 import asyncio
 import aiostream
-
+from contextlib import suppress
 import yaml
 
 from birdman.stream.base import BaseStreamer
@@ -80,21 +80,18 @@ class Birdman(object):
 
         try:
             self.loop.run_until_complete(self._stream_routine())
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt has occured; Terminated by user")
+            pass
         finally:
+            # Cancel all pending tasks
+            for task in asyncio.Task.all_tasks():
+                with suppress(asyncio.CancelledError):
+                    task.cancel()
+            # call close() for all streamers and listeners
+            for streamer in self._streamers:
+                self.loop.run_until_complete(streamer.close())
+            for listener in self._listeners:
+                listener.close()
+            # Shutdown the main loop
             self.loop.close()
-
-    def add_streamer(self, streamer):
-        if not isinstance(streamer, BaseStreamer):
-            raise ValueError("`streamer` argument must be a BaseStreamer instance")
-
-        self.loop.stop()
-        self._streamers.append(streamer)
-        self.start()
-
-    def add_listener(self, listener):
-        if not isinstance(listener, BaseListener):
-            raise ValueError("`listener` argument must be a BaseListener instance")
-
-        self.loop.stop()
-        self._listeners.append(listener)
-        self.start()

@@ -88,14 +88,19 @@ class BaseStreamer(object):
             self.logger.warning("ProtocolError has raised but continue to stream.")
             self.stream()
         except RecursionError:
-            return
-        except KeyboardInterrupt:
-            self.logger.error("User has interrupted.")
+            self.logger.error("RecursionError; too much retries")
             return
 
     @abstractmethod
-    async def job():
+    async def job(self):
         '''Must override as a generator(i.e. yield not return).
         Generate one result at a time.
+        '''
+        pass
+
+    @abstractmethod
+    async def close(self):
+        '''Must override.
+        How to properly close this streamer?
         '''
         pass

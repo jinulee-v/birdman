@@ -39,3 +39,6 @@ class TextListener(BaseListener):
         self.file.write(
             result_str + '\n'
         )
+
+    def close(self):
+        self.file.close()

@@ -219,7 +219,7 @@ class TodayHumorStreamer(ActiveStreamer):
             soup = BeautifulSoup(markup, parser).find('table', attrs={'class': 'table_list'})
             if '해당 갤러리는 존재하지 않습니다' in str(soup):
                 raise NoSuchBoardError
-        except:
+        except NoSuchBoardError:
             return None
 
         raw_post_list = soup.find_all('td', attrs={'class': 'subject'})
@@ -246,7 +246,7 @@ class TodayHumorStreamer(ActiveStreamer):
             # FIXME: if wrong ID,
             # if '해당 갤러리는 존재하지 않습니다' in str(soup):
             #     raise NoSuchBoardError
-        except:
+        except NoSuchBoardError:
             # FIXME categorize exceptions
             return None
 

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import asyncio
+import aiohttp
 
 from birdman.stream.base import BaseStreamer, BaseStreamerConfig
 
@@ -36,6 +37,8 @@ class ActiveStreamer(BaseStreamer):
         - REQUIRES:
             get_post: crawl the post and generates result object(usually a dict).
             summary: generates and logs summary text for each result generated
+        close:
+            closes the streamer's aiohttp session.
     
     - inherited from BaseStreamer
         get_parser: returns initial argument parser
@@ -45,6 +48,9 @@ class ActiveStreamer(BaseStreamer):
     """
 
     __metaclass__ = ABCMeta
+
+    def __init__(self):
+        self._session = aiohttp.ClientSession()
 
     async def job(self):
         self.logger.info("Start of crawling epoch")
@@ -64,6 +70,9 @@ class ActiveStreamer(BaseStreamer):
         self.config.set_current(new_post_id, new_datetime)
         await asyncio.sleep(self.config.recrawl_interval)
         self.job()
+
+    async def close(self):
+        await self._session.close()
 
     @abstractmethod
     async def get_post(self):
