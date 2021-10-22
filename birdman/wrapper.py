@@ -70,7 +70,7 @@ class Birdman(object):
         async with self._stream.stream() as streamer:
             async for name, item in streamer:
                 for listener in self._listeners:
-                    if listener.listen_to is None or name in listener.listen_to:
+                    if (listener.listen_to is None) or (name in listener.listen_to):
                         listener.listen(item)
 
     def start(self):

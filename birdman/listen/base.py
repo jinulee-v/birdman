@@ -18,7 +18,7 @@ class BaseListener(object):
             listen_to: Iterable[str]. List of Streamer.config.name to listen.
                        For default, listen on everything.
         """
-        self.listen_to = obj.get('listen_to', 'None')
+        self.listen_to = obj.get('listen_to', None)
 
     @abstractmethod
     def listen(self, result):
