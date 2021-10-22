@@ -36,7 +36,7 @@ class TodayHumorStreamerConfig(ActiveStreamerConfig):
         self.name = 'todayhumor.' + self.board_id
 
         # Should we include comments? (str)
-        self.include_comments = bool(obj.get('include_comments', 1))
+        self.include_comments = bool(obj.get('include_comments', 0))
 
         # When do we stop
         init_post_id = obj.get('current_post_id', 0)
@@ -69,7 +69,7 @@ class TodayHumorStreamer(ActiveStreamer):
         # FIXME someday we should all turn over from raw HTML parsing to API
         self._lists_url = 'http://www.todayhumor.co.kr/board/list.php'
         self._view_url = 'http://www.todayhumor.co.kr'
-        self._comment_api_url = 'http://app.TodayHumor.com/api/comment_new.php'
+        # self._comment_api_url = 'http://app.TodayHumor.com/api/comment_new.php'
 
     def summary(self, result):
         """summary function for TodayHumor.
@@ -131,9 +131,9 @@ class TodayHumorStreamer(ActiveStreamer):
                 post['crawled_at'] = datetime.now().isoformat()
 
                 if self.config.include_comments and 'comment_cnt' in post:
-                    if post['comment_cnt'] > 0:
-                        post['comments'] = await self.get_all_comments(board_id, post_no)
-                    else:
+                    # if post['comment_cnt'] > 0:
+                    #     post['comments'] = await self.get_all_comments(board_id, post_no)
+                    # else:
                         post['comments'] = []
 
                 # Check if we have saw this post before
