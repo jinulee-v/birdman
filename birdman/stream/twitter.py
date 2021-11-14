@@ -141,17 +141,16 @@ class BirdmanTwitterAsyncStream(tweepy.asynchronous.AsyncStream):
             }
             tweet['retweet'] = retweet
 
+        if self.config.filter_retweets and "RT @" in tweet['body']    :
+            return False
+
         # Except potentially repetitive retweets
         if self.config.remove_links:
             tweet['body'] = delete_links(tweet['body'])
         if self.config.remove_mentions:
             tweet['body'] = delete_mentions(tweet['body'])
 
-        if self.config.filter_retweets:
-            if not "RT @" in tweet:
-                return tweet
-        else:
-            return tweet
+        return tweet
 
     async def on_error(self, status_code):
         if status_code == 420:  # if connection failed
