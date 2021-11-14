@@ -118,3 +118,6 @@ data/*
 
 # IDE environment
 .vscode
+
+# private information
+*auth.yaml

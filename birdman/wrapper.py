@@ -11,7 +11,7 @@ from birdman.listen import get_listener
 from birdman.stream import get_streamer
 
 
-def init_birdman_from_yaml(file, encoding='UTF-8'):
+def init_birdman_from_yaml(file, auth_file=None, encoding='UTF-8'):
     listeners = []
     listener_global = None
     streamers = []
@@ -19,6 +19,11 @@ def init_birdman_from_yaml(file, encoding='UTF-8'):
 
     with open(file, 'r', encoding=encoding) as file:
         obj = yaml.safe_load(file)
+        # optional; only required in streamers with authentication.
+        auth = None
+        if auth_file is not None:
+            with open(auth_file, 'r', encoding=encoding) as file:
+                auth = yaml.safe_load(file)
         for streamer in obj['streamer']:
             if streamer['class'] == 'global':
                 if streamer_global is None:
@@ -29,6 +34,8 @@ def init_birdman_from_yaml(file, encoding='UTF-8'):
             else:
                 if streamer_global is not None:
                     streamer = {**streamer, **streamer_global}
+                    if auth is not None:
+                        streamer['auth'] = auth
                 streamers.append(get_streamer(streamer['class'])(streamer))
         for listener in obj['listener']:
             if listener['class'] == 'global':
@@ -77,12 +84,15 @@ class Birdman(object):
         """Main entry point of the Birdman object.
         """
         self.loop = asyncio.get_event_loop()
+        retry = False
 
         try:
             self.loop.run_until_complete(self._stream_routine())
         except KeyboardInterrupt:
             print("KeyboardInterrupt has occured; Terminated by user")
-            pass
+        except GeneratorExit:
+            print("Generator exited. retry")
+            retry = True
         finally:
             # Cancel all pending tasks
             for task in asyncio.Task.all_tasks():
@@ -95,3 +105,5 @@ class Birdman(object):
                 listener.close()
             # Shutdown the main loop
             self.loop.close()
+            if retry:
+                self.start()
