@@ -121,8 +121,8 @@ class DCInsideStreamer(ActiveStreamer):
                     except aiohttp.ServerTimeoutError:
                         # if timeout occurs, retry
                         continue
-                    except AttributeError:
-                        return
+                    except aiohttp.InvalidURL:
+                        raise ParserUpdateRequiredError(self.config.name, "Invalid URL. Website or API address may has changed.")
 
                 if not isinstance(post, dict):
                     return
@@ -145,8 +145,8 @@ class DCInsideStreamer(ActiveStreamer):
                     return
 
                 yield post
-        except AttributeError:
-            return
+        except:
+            raise UnknownError(self.config.name)
 
     async def get_post_list(self, gallery_id):
         """DCinside Post generator
@@ -174,35 +174,40 @@ class DCInsideStreamer(ActiveStreamer):
             except aiohttp.ServerTimeoutError:
                 # if timeout occurs, retry
                 continue
+            except aiohttp.InvalidURL:
+                raise ParserUpdateRequiredError(self.config.name, "Invalid URL. Website or API address may has changed.")
         
     async def get_all_comments(self, gallery_id, post_no):
         """Get all comments by DCInside mobile app API.
         """
         comments = []
-        async with self._session.get(
-                            '%s?id=%s&no=%s' % (self._comment_api_url, gallery_id, post_no),
-                            headers=self.config.header,
-                            timeout=self.config.timeout
-                        ) as response:
+        try:
+            async with self._session.get(
+                                '%s?id=%s&no=%s' % (self._comment_api_url, gallery_id, post_no),
+                                headers=self.config.header,
+                                timeout=self.config.timeout
+                            ) as response:
 
-            response = json.loads(await response.text())
-            for comment in response[0]['comment_list']:
-                comment_data = {
-                        'user_id': comment['user_id'],
-                        'user_ip': comment['ipData'],
-                        'nickname': comment['name'],
+                response = json.loads(await response.text())
+                for comment in response[0]['comment_list']:
+                    comment_data = {
+                            'user_id': comment['user_id'],
+                            'user_ip': comment['ipData'],
+                            'nickname': comment['name'],
 
-                        'written_at': datetime.strptime(comment['date_time'], "%Y.%m.%d %H:%M").isoformat(),
+                            'written_at': datetime.strptime(comment['date_time'], "%Y.%m.%d %H:%M").isoformat(),
 
-                        'body': re.sub('(<br>)+', '\n', comment['comment_memo']),
+                            'body': re.sub('(<br>)+', '\n', comment['comment_memo']),
 
-                        'subcomments': []
-                }
-                if 'under_step' not in comment:
-                    comments.append(comment_data)
-                else:
-                    comments[-1]['subcomments'].append(comment_data)
-            return comments
+                            'subcomments': []
+                    }
+                    if 'under_step' not in comment:
+                        comments.append(comment_data)
+                    else:
+                        comments[-1]['subcomments'].append(comment_data)
+                return comments
+        except aiohttp.InvalidURL:
+            raise ParserUpdateRequiredError(self.config.name, "Invalid URL. Website or API address may has changed.")
 
     @staticmethod
     def parse_post_list(markup, parser):
