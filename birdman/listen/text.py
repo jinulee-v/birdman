@@ -31,7 +31,7 @@ class TextListener(BaseListener):
         buffering = obj.get('buffering', 1)
         self.file = open(file, mode='a', encoding=encoding, buffering=buffering)
 
-        self.formatstr = obj.get('formatstr', "{url}\t{title}\t{nickname}\t{written_at}")
+        self.formatstr = obj.get('formatstr', "{url}\t{nickname}\t{written_at}")
 
     def listen(self, result):
         result = format_dict(result)

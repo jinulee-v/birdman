@@ -145,6 +145,8 @@ class DCInsideStreamer(ActiveStreamer):
                     return
 
                 yield post
+        except GeneratorExit:
+            raise GeneratorExit()
         except:
             raise UnknownError(self.config.name)
 

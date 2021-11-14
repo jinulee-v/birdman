@@ -142,8 +142,10 @@ class TodayHumorStreamer(ActiveStreamer):
                     return
 
                 yield post
-        except AttributeError:
-            return
+        except GeneratorExit:
+            raise GeneratorExit()
+        except:
+            raise UnknownError(self.config.name)
 
     async def get_post_list(self, board_id):
         """TodayHumor Post generator
