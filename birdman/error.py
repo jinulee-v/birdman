@@ -4,5 +4,5 @@ class ParserUpdateRequiredError(Exception):
 
 
 class UnknownError(Exception):
-    def __init__(self, name, msg):
+    def __init__(self, name):
         super(UnknownError, self).__init__("%s | %s"%(name, "Unknown error. Generate issues in our Github repository for support."))

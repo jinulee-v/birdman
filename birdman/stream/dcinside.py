@@ -171,7 +171,7 @@ class DCInsideStreamer(ActiveStreamer):
                     for url in post_list:
                         yield self._view_url + re.sub('&page=[0-9]*', '', url)
                 page += 1
-            except aiohttp.ServerTimeoutError:
+            except (aiohttp.ServerTimeoutError, asyncio.TimeoutError):
                 # if timeout occurs, retry
                 continue
             except aiohttp.InvalidURL:
@@ -208,6 +208,10 @@ class DCInsideStreamer(ActiveStreamer):
                 return comments
         except aiohttp.InvalidURL:
             raise ParserUpdateRequiredError(self.config.name, "Invalid URL. Website or API address may has changed.")
+        except (aiohttp.ServerTimeoutError, asyncio.TimeoutError):
+            return self.get_all_comments(gallery_id, post_no)
+        except RecursionError:
+            return []
 
     @staticmethod
     def parse_post_list(markup, parser):

@@ -79,7 +79,7 @@ class TodayHumorStreamer(ActiveStreamer):
         text += Fore.CYAN + result['title'] + Fore.RESET + '\n' # Title
         text += Fore.CYAN + result['written_at'] + Fore.RESET + '\n' # Written at
         text += Fore.RED + result['nickname'] + Fore.RESET + '\n' # Written by
-        text += Fore.MAGENTA + '조회 %d / 추천 %d / 댓글 %d' % (result['view_cnt'], result['view_updn'], result['comment_cnt']) + Fore.RESET + '\n\n' # Statistics
+        text += Fore.MAGENTA + '조회 %d / 추천 %d / 비추천 %d / 댓글 %d' % (result['view_cnt'], result['view_up'], result['view_dn'], result['comment_cnt']) + Fore.RESET + '\n\n' # Statistics
         text += result['body'] + '\n\n' # Body
         if self.config.include_comments:
             for comment in result['comments']:
@@ -258,7 +258,13 @@ class TodayHumorStreamer(ActiveStreamer):
             user_id = post_info.find('span', attrs={'id': 'viewPageWriterNameSpan'})['mn']
             nickname = post_info.find('span', attrs={'id': 'viewPageWriterNameSpan'})['name']
 
-            view_updn = int(post_info.find('span', attrs={'class', 'view_ok_nok'}).getText())
+            view_updn = post_info.find('span', attrs={'class', 'view_ok_nok'}).getText()
+            if '/' not in view_updn:
+                view_up = int(view_updn)
+                view_dn = 0
+            else:
+                view_up = int(view_updn.split('/')[0])
+                view_dn = int(view_updn.split('/')[0])
 
             for div in post_info.find_all('div'):
                 if u'등록시간' in div.get_text():
@@ -283,7 +289,8 @@ class TodayHumorStreamer(ActiveStreamer):
                 'title': title,
                 'written_at': timestamp,
 
-                'view_updn': view_updn,
+                'view_up': view_up,
+                'view_dn': view_dn,
                 'view_cnt': view_cnt,
                 'comment_cnt': comment_cnt,
                 'body': body,
