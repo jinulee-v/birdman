@@ -141,7 +141,7 @@ class BirdmanTwitterAsyncStream(tweepy.asynchronous.AsyncStream):
             }
             tweet['retweet'] = retweet
 
-        if self.config.filter_retweets and "RT @" in tweet['body']    :
+        if self.config.filter_retweets and "RT @" in tweet['body']:
             return False
 
         # Except potentially repetitive retweets
@@ -313,6 +313,8 @@ class TwitterKeywordStreamer(BaseStreamer):
     
     async def job(self):
         async for result in self._task:
+            if not result:
+                continue
             if self.config.verbose:
                 self.summary(result)
             yield result
