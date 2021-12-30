@@ -118,7 +118,7 @@ class DCInsideStreamer(ActiveStreamer):
 
                             post = self.parse_post(await response.text(), self.config.markup)
                             break
-                    except aiohttp.ServerTimeoutError:
+                    except (aiohttp.ServerTimeoutError, asyncio.TimeoutError):
                         # if timeout occurs, retry
                         continue
                     except aiohttp.InvalidURL:
@@ -211,12 +211,11 @@ class DCInsideStreamer(ActiveStreamer):
         except aiohttp.InvalidURL:
             raise ParserUpdateRequiredError(self.config.name, "Invalid URL. Website or API address may has changed.")
         except (aiohttp.ServerTimeoutError, asyncio.TimeoutError):
-            return self.get_all_comments(gallery_id, post_no)
+            return await self.get_all_comments(gallery_id, post_no)
         except RecursionError:
             return []
 
-    @staticmethod
-    def parse_post_list(markup, parser):
+    def parse_post_list(self, markup, parser):
         """BeatifulSoup based post list parser
 
         Args:
@@ -244,8 +243,7 @@ class DCInsideStreamer(ActiveStreamer):
 
         raise UnknownError(self.config.name)
 
-    @staticmethod
-    def parse_post(markup, parser):
+    def parse_post(self, markup, parser):
         """BeatifulSoup based post parser
 
         Args:

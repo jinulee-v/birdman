@@ -115,7 +115,7 @@ class TodayHumorStreamer(ActiveStreamer):
                         ) as response:
                             post = self.parse_post(await response.text(), self.config.markup)
                             break
-                    except aiohttp.ServerTimeoutError:
+                    except (aiohttp.ServerTimeoutError, asyncio.TimeoutError):
                         # if timeout occurs, retry
                         continue
                     except aiohttp.InvalidURL:
@@ -211,8 +211,7 @@ class TodayHumorStreamer(ActiveStreamer):
         except aiohttp.InvalidURL:
             raise ParserUpdateRequiredError(self.config.name, "Invalid URL. Website or API address may has changed.")
 
-    @staticmethod
-    def parse_post_list(markup, parser):
+    def parse_post_list(self, markup, parser):
         """BeatifulSoup based post list parser
 
         Args:
@@ -239,8 +238,7 @@ class TodayHumorStreamer(ActiveStreamer):
 
         raise UnknownError(self.config.name)
 
-    @staticmethod
-    def parse_post(markup, parser):
+    def parse_post(self, markup, parser):
         """BeatifulSoup based post parser
 
         Args:

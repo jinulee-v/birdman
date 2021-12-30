@@ -57,19 +57,23 @@ class ActiveStreamer(BaseStreamer):
 
         new_post_id, new_datetime = self.config.current_post_id, self.config.current_datetime
         initial_result = True
-        async for result in self.get_post():
-            if initial_result:
-                new_post_id, new_datetime = result['post_no'], result['written_at']
-                initial_result = False
-            if result is not None:
-                self.summary(result)
-            yield result
-
-        if self.config.verbose:
-            self.logger.info("End of crawling epoch(reached config.current_*)")
-        self.config.set_current(new_post_id, new_datetime)
-        await asyncio.sleep(self.config.recrawl_interval)
-        self.job()
+        try:
+            async for result in self.get_post():
+                if initial_result:
+                    new_post_id, new_datetime = result['post_no'], result['written_at']
+                    initial_result = False
+                if result is not None:
+                    self.summary(result)
+                yield result
+        except Exception as e:
+            print(e)
+            self.logger.info("Terminate due to an error.")
+        finally:
+            if self.config.verbose:
+                self.logger.info("End of crawling epoch(reached config.current_*)")
+            self.config.set_current(new_post_id, new_datetime)
+            await asyncio.sleep(self.config.recrawl_interval)
+            self.job()
 
     async def close(self):
         await self._session.close()
