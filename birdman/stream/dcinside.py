@@ -34,7 +34,8 @@ class DCInsideStreamerConfig(ActiveStreamerConfig):
 
         # DCInside Gallery ID (str)
         self.gallery_id = obj.get('gallery_id', 'animal')
-        self.name = 'dcinside.' + self.gallery_id
+        self.minor_gallery = obj.get('minor_gallery', 0)
+        self.name = 'dcinside.' + ('minor.' if self.minor_gallery else '') + self.gallery_id
 
         # Should we include comments? (str)
         self.include_comments = bool(obj.get('include_comments', 1))
@@ -69,7 +70,7 @@ class DCInsideStreamer(ActiveStreamer):
         colorama.init()
 
         # FIXME someday we should all turn over from raw HTML parsing to API
-        self._lists_url = 'http://gall.dcinside.com/board/lists'
+        self._lists_url = 'http://gall.dcinside.com{}/board/lists'.format('/mgallery' if self.config.minor_gallery else '')
         self._view_url = 'http://gall.dcinside.com'
         self._comment_api_url = 'http://app.dcinside.com/api/comment_new.php'
 
@@ -147,6 +148,8 @@ class DCInsideStreamer(ActiveStreamer):
                 yield post
         except GeneratorExit:
             raise GeneratorExit()
+        except ParserUpdateRequiredError as e:
+            raise e
         except:
             raise UnknownError(self.config.name)
 
@@ -235,7 +238,6 @@ class DCInsideStreamer(ActiveStreamer):
             # remove NOTICE posts(fixed at the top of the list)
             post_list = [
                 tr.find('a')['href'] for tr in raw_post_list
-                if tr['data-type'] == "icon_txt"
             ]
             return post_list
         except (AttributeError, KeyError) as er:

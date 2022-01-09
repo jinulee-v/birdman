@@ -144,6 +144,8 @@ class TodayHumorStreamer(ActiveStreamer):
                 yield post
         except GeneratorExit:
             raise GeneratorExit()
+        except ParserUpdateRequiredError as e:
+            raise e
         except:
             raise UnknownError(self.config.name)
 
