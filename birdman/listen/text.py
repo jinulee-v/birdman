@@ -2,14 +2,6 @@ from birdman.listen import register_listener
 from birdman.listen.base import BaseListener
 
 
-class format_dict(dict):
-    """Helper class for easy formatting.
-    """
-
-    def __missing__(self, key):
-        return ""
-
-
 @register_listener('text')
 class TextListener(BaseListener):
     """TextListener records the result dict in given format to the desired file.
@@ -30,15 +22,21 @@ class TextListener(BaseListener):
         encoding = obj.get('encoding', 'UTF-8')
         buffering = obj.get('buffering', 1)
         self.file = open(file, mode='a', encoding=encoding, buffering=buffering)
+        self.must_have_keys = obj.get('must_have_keys', ['url', 'nickname', 'wirtten_at'])
 
         self.formatstr = obj.get('formatstr', "{url}\t{nickname}\t{written_at}")
 
     def listen(self, result):
-        result = format_dict(result)
-        result_str = self.formatstr.format(**result)
-        self.file.write(
-            result_str + '\n'
-        )
+        try:
+            for key in self.must_have_keys:
+                if key not in result:
+                    result['key'] = ''
+            result_str = self.formatstr.format(**result)
+            self.file.write(
+                result_str + '\n'
+            )
+        except Exception as e:
+            print(e)
 
     def close(self):
         self.file.close()
