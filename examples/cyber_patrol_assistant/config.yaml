@@ -1,0 +1,80 @@
+streamer:
+    -
+        # globally applied to all streamers
+        class: "global"
+        # each streamer requests a page per 3 seconds
+        page_interval: 5
+        recrawl_interval: 100
+        verbose: 1
+        include_comments: 0
+        current_datetime: "2022-01-11T00:00:00"
+    - 
+        # DC인사이드 해군 갤러리
+        class: "dcinside"
+        gallery_id: "navy"
+    - 
+        # DC인사이드 육군 갤러리
+        class: "dcinside"
+        gallery_id: "army"
+    - 
+        # DC인사이드 공군 갤러리
+        class: "dcinside"
+        gallery_id: "airforce"
+    - 
+        # DC인사이드 장교 갤러리
+        class: "dcinside"
+        gallery_id: "officer"
+        minor_gallery: 1
+    - 
+        # DC인사이드 부사관 갤러리
+        class: "dcinside"
+        gallery_id: "nco"
+        minor_gallery: 1
+    - 
+        # DC인사이드 ROTC 갤러리
+        class: "dcinside"
+        gallery_id: "rotc"
+        minor_gallery: 1
+    - 
+        # DC인사이드 사관학교 갤러리
+        class: "dcinside"
+        gallery_id: "academy"
+        minor_gallery: 1
+    - 
+        # DC인사이드 직업군인 갤러리
+        class: "dcinside"
+        gallery_id: "professionalsoldier"
+        minor_gallery: 1
+    - 
+        # DC인사이드 군무원 갤러리
+        class: "dcinside"
+        gallery_id: "soider"
+        minor_gallery: 1
+    - 
+        # 오늘의유머 군대게시판
+        class: "todayhumor"
+        board_id: "military"
+    -
+        # 트위터
+        class: "twitterkeyword"
+        word_list:
+            - "군대"
+            - "육군"
+            - "해군"
+            - "공군"
+            - "해병대"
+            - "복무"
+            - "부대"
+            - "함대"
+            - "훈련"
+            - "행군"
+            - "군함"
+            - "국방"
+            - "장교"
+            - "부사관"
+            - "간부"
+            - "사병"
+listener:
+    -
+        class: "title_body"
+        file: "examples/cyber_patrol_assistant/corpus.txt"

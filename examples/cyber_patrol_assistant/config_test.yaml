@@ -1,0 +1,25 @@
+streamer:
+    -
+        # globally applied to all streamers
+        class: "global"
+        # each streamer requests a page per 3 seconds
+        page_interval: 1
+        recrawl_interval: 100
+        verbose: 1
+        include_comments: 0
+    - 
+        # DC인사이드 해군 갤러리
+        class: "dcinside"
+        gallery_id: "navy"
+    - 
+        # DC인사이드 육군 갤러리
+        class: "dcinside"
+        gallery_id: "army"
+    - 
+        # DC인사이드 공군 갤러리
+        class: "dcinside"
+        gallery_id: "airforce"
+listener:
+    -
+        class: "text"
+        file: "examples/cyber_patrol_assistant/temp.txt"
