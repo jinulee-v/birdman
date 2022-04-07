@@ -27,16 +27,13 @@ class TextListener(BaseListener):
         self.formatstr = obj.get('formatstr', "{url}\t{nickname}\t{written_at}")
 
     def listen(self, result):
-        try:
-            for key in self.must_have_keys:
-                if key not in result:
-                    result['key'] = ''
-            result_str = self.formatstr.format(**result)
-            self.file.write(
-                result_str + '\n'
-            )
-        except Exception as e:
-            print(e)
+        for key in self.must_have_keys:
+            if key not in result:
+                result[key] = ''
+        result_str = self.formatstr.format(**result)
+        self.file.write(
+            result_str + '\n'
+        )
 
     def close(self):
         self.file.close()

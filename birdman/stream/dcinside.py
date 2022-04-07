@@ -241,7 +241,7 @@ class DCInsideStreamer(ActiveStreamer):
             ]
             return post_list
         except (AttributeError, KeyError) as er:
-            raise ParserUpdateRequiredError(self.config.name, "Website HTML structure may has been changed.")
+            raise ParserUpdateRequiredError(self.config.name, "Post list webpage HTML structure may has been changed.")
 
         raise UnknownError(self.config.name)
 
@@ -294,7 +294,7 @@ class DCInsideStreamer(ActiveStreamer):
 
             return post
         except (AttributeError, KeyError) as er:
-            raise ParserUpdateRequiredError(self.config.name, "Website HTML structure may has been changed.")
+            raise ParserUpdateRequiredError(self.config.name, "Post webpage HTML structure may has been changed.")
 
         raise UnknownError(self.config.name)
 
